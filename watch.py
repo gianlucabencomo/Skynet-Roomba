@@ -4,12 +4,16 @@ import torch
 import numpy as np
 import time
 
-from environments.sumo import Sumo
+#from environments.sumo_v1 import Sumo
+from environments.sumo_v2 import Sumo
 from models.mlp import MlpContinuousActorCritic
 from utils import get_device
 
 from models.base import ZeroActionAgent
 from copy import deepcopy
+
+from environments.wrappers import FrameStackWrapper
+
 
 def load_checkpoint(checkpoint_path, obs_dim, action_dim, device):
     agent = MlpContinuousActorCritic(obs_dim, action_dim).to(device)
@@ -73,13 +77,16 @@ def main(
     ckpt1: str,
     ckpt2: str,
     episodes: int = 5,
+    frame_stack: int = 1,
 ):
     device = get_device()
     env = Sumo(train=False, render_mode="human")
+    if frame_stack > 1:
+        env = FrameStackWrapper(env, k=frame_stack)
 
     obs_dim = env.observation_spaces["maximus"].shape[0]  # Use actual shape from environment
     action_dim = env.action_spaces["maximus"].shape[0]
-    
+
     agent1 = load_checkpoint(ckpt1, obs_dim, action_dim, device)
     if ckpt2 is None:
         agent2 = deepcopy(agent1)

@@ -23,7 +23,8 @@ from models.base import ZeroActionAgent, RandomActionAgent
 
 from utils import *
 
-from environments.sumo import Sumo
+#from environments.sumo_v1 import Sumo
+from environments.sumo_v2 import Sumo
 from supersuit import pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1
 
 import supersuit as ss
@@ -31,6 +32,8 @@ import supersuit as ss
 from evaluate import evaluate_self_play
 
 from collections import deque
+
+from environments.wrappers import FrameStackWrapper
 
 class RunningMeanStd:
     def __init__(self, epsilon=1e-4, shape=()):
@@ -65,21 +68,22 @@ def clone_policy(src: nn.Module) -> nn.Module:
 
 def train(
     seed: int = 0,
-    total_timesteps: int = 200_000_000,
+    total_timesteps: int = 100_000_000,
     n_envs: int = 1024,
     n_steps: int = 256,
     n_mbs: int = 64, # number of mini-batches
-    epochs_per_update: int = 10,
+    epochs_per_update: int = 5,
     gamma: float = 0.995,
     gae_lambda: float = 0.95,
     clip_coef: float = 0.2,
-    actor_lr: float = 3e-4,
-    critic_lr: float = 1e-3,
+    actor_lr: float = 1e-3,
+    critic_lr: float = 1e-2,
     ent_coef: float = 0.0,
     max_grad_norm: float = 0.5,
     target_kl: float = 0.01,
     norm_adv: bool = True,
     clip_vloss: bool = True,
+    anneal_lr: bool = True,
     frame_stack: int = 1,
     record_videos: bool = False,
     run_name: Optional[str] = None,
@@ -112,6 +116,8 @@ def train(
 
     total_envs = n_envs * 2
     env = Sumo()
+    if frame_stack > 1:
+        env = FrameStackWrapper(env, k=frame_stack)
     env = pettingzoo_env_to_vec_env_v1(env)
     envs = concat_vec_envs_v1(env, num_vec_envs=n_envs, num_cpus=os.cpu_count(), base_class="gymnasium")
     envs.single_observation_space = envs.observation_space
@@ -130,7 +136,7 @@ def train(
     agent = MlpContinuousActorCritic(obs_dim, action_dim).to(device)
 
     actor_optimizer = optim.Adam(agent.actor_params(), lr=actor_lr, eps=1e-5)
-    critic_optimizer = optim.AdamW(agent.critic_params(), lr=critic_lr, eps=1e-5, weight_decay=1e-4)
+    critic_optimizer = optim.Adam(agent.critic_params(), lr=critic_lr, eps=1e-5)
     
     # set up buffer
     obs = torch.zeros((n_steps, n_envs) + envs.single_observation_space.shape).to(device) # TODO: fix hard coding
@@ -150,6 +156,12 @@ def train(
     reward_rms = RunningMeanStd()
     with tqdm.tqdm(total=total_timesteps, desc="Training") as pbar:
         for iteration in range(1, n_iterations + 1):
+            if anneal_lr:
+                frac = 1.0 - (iteration - 1.0) / n_iterations
+                actor_lr_now = frac * actor_lr
+                critic_lr_now = frac * critic_lr
+                actor_optimizer.param_groups[0]["lr"] = actor_lr_now
+                critic_optimizer.param_groups[0]["lr"] = critic_lr_now
             agent.train()
             opp_idx = torch.randint(low=0, high=len(past_agents), size=(n_envs,), device=device)
             for step in range(0, n_steps):
@@ -301,8 +313,10 @@ def train(
                 checkpoint_path = os.path.join(checkpoint_dir, checkpoint_name)
                 torch.save(agent.state_dict(), checkpoint_path)
                 past_agents.append(clone_policy(agent))
-
-            reward, length = evaluate_self_play(Sumo(train=False), agent, ZeroActionAgent(envs), device)
+            eval_env = Sumo(contact_rew_weight=0.0)
+            if frame_stack > 1:
+                eval_env = FrameStackWrapper(eval_env, k=frame_stack)
+            reward, length = evaluate_self_play(eval_env, agent, ZeroActionAgent(envs), device)
 
             writer.add_scalar("results/episode_reward", reward, global_step)
             writer.add_scalar("results/episode_length", length, global_step)
