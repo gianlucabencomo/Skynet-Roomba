@@ -1,0 +1,114 @@
+<mujoco model="roomba_v1">
+    <option iterations="8" ls_iterations="16" solver="Newton" timestep="0.002">
+        <!-- <flag eulerdamp="disable"/> -->
+    </option>
+    <default>
+        <motor ctrllimited="true" ctrlrange="-1 1"/>
+        <geom density="700"/>
+        <joint damping="0.1" armature="0.1"/>
+    </default>
+    <asset>
+        <texture name="skybox" type="skybox" builtin="gradient" rgb1=".4 .6 .8" rgb2="0 0 0"
+               width="800" height="800" mark="random" markrgb="1 1 1"/>
+        <material name="sky" texture="skybox" emission="1"/>
+        <material name="roomba1_color" rgba="0.2 0.6 1 1"/>   <!-- Blue -->
+        <material name="roomba1_decal_color" rgba="0.22 0.58 0.98 1"/>
+        <material name="roomba2_color" rgba="1 0.3 0.3 1"/>   <!-- Red -->
+        <material name="roomba2_decal_color" rgba="0.98 0.32 0.28 1"/>
+        <material name="floor_color" rgba="0.2 0.2 0.2 1"/>
+    </asset>
+    <!-- <custom>
+        <numeric data="8" name="max_contact_points"/>
+        <numeric data="8" name="max_geom_pairs"/>
+    </custom> -->
+    <worldbody>
+        <geom name="floor" type="cylinder" size="2 0.1" pos="0 0 0" material="floor_color" friction="0.9 0.005 0.0001"/>
+        <light name="light" pos="0 0 7" dir="0 0 -1" mode="fixed"/>
+        <camera name="side" pos="-4 0 2" xyaxes="0 -1 0 1 0 2" mode="fixed"/>
+        <body name="roomba1" pos="0 1 0.2">
+            <freejoint name="root1"/>
+            <geom name="roomba1" type="cylinder" size="0.1625 0.035" pos="0 0 0" material="roomba1_color"/>
+            <site name="front_sensor1" type="ellipsoid" pos="0 -0.1625 0" size=".03 .001 .03" material="roomba1_decal_color"/>
+            <site name="front_range1" type="sphere" size="0.01" pos="0 -0.1625 0" quat="0.7071 0.7071 0 0" rgba="0 0 0 0"/>
+            <geom type="ellipsoid" pos="0 -0.1625 0" size=".03 .001 .03" material="roomba1_decal_color"/>
+            <site name="side_sensor_left1" type="ellipsoid" pos="0.11 -0.12 0" size=".001 .03 .03" quat="0.3827 0 0 0.9239" material="roomba1_decal_color"/>
+            <site name="side_left_range1" type="sphere" size="0.01" pos="0.11 -0.12 0" quat="0.653 0.653 0.270 0.270" rgba="0 0 0 0"/>
+            <geom type="ellipsoid" pos="0.11 -0.12 0" size=".001 .03 .03" quat="0.3827 0 0 0.9239" material="roomba1_decal_color"/>
+            <site name="side_sensor_right1" type="ellipsoid" pos="-0.11 -0.12 0" size=".03 .001 .03" quat="0.3827 0 0 0.9239" material="roomba1_decal_color"/>
+            <site name="side_right_range1" type="sphere" size="0.01" pos="-0.11 -0.12 0" quat="0.653 0.653 -0.270 -0.270" rgba="0 0 0 0"/>
+            <geom type="ellipsoid" pos="-0.11 -0.12 0" size=".03 .001 .03" quat="0.3827 0 0 0.9239" material="roomba1_decal_color"/>
+            <body name="lwheel1" pos="0.115 0.005 -0.005">
+                <joint name="lwheel1" type="hinge" axis="1 0 0"/>
+                <geom type="cylinder" size="0.04 0.015" quat="0 0.7071 0 0.7071"/>
+            </body>
+            <body name="rwheel1" pos="-0.115 0.005 -0.005">
+                <joint name="rwheel1" type="hinge" axis="1 0 0"/>
+                <geom type="cylinder" size="0.04 0.015" quat="0 0.7071 0 0.7071"/>
+            </body>
+            <body name="fwheel1" pos="0 -0.13 -0.025">
+                <geom type="sphere" size="0.02" friction="0 0 0"/>
+            </body>
+            <body name="fsensor1" pos="0 -0.13 0.02">
+                <geom type="cylinder" size="0.015 0.02" material="roomba1_decal_color" contype="0" conaffinity="0"/>
+            </body>
+            <body name="onbutton1" pos="0 0 0.02">
+                <geom type="cylinder" size="0.03 0.02" material="roomba1_decal_color" contype="0" conaffinity="0"/>
+            </body>
+        </body>
+        <body name="roomba2" pos="0 -1 0.2" quat="0 0 0 1">
+            <freejoint name="root2"/>
+            <geom name="roomba2" type="cylinder" size="0.1625 0.035" pos="0 0 0" material="roomba2_color"/>
+            <site name="front_sensor2" type="ellipsoid" pos="0 -0.1625 0" size=".03 .001 .03" material="roomba2_decal_color"/>
+            <site name="front_range2" type="sphere" size="0.01" pos="0 -0.1625 0" quat="0.7071 0.7071 0 0" rgba="0 0 0 0"/>
+            <geom type="ellipsoid" pos="0 -0.1625 0" size=".03 .001 .03" material="roomba2_decal_color"/>
+            <site name="side_sensor_left2" type="ellipsoid" pos="0.11 -0.12 0" size=".001 .03 .03" quat="0.3827 0 0 0.9239" material="roomba2_decal_color"/>
+            <site name="side_left_range2" type="sphere" size="0.01" pos="0.11 -0.12 0" quat="0.653 0.653 0.270 0.270" rgba="0 0 0 0"/>
+            <geom type="ellipsoid" pos="0.11 -0.12 0" size=".001 .03 .03" quat="0.3827 0 0 0.9239" material="roomba2_decal_color"/>
+            <site name="side_sensor_right2" type="ellipsoid" pos="-0.11 -0.12 0" size=".03 .001 .03" quat="0.3827 0 0 0.9239" material="roomba2_decal_color"/>
+            <site name="side_right_range2" type="sphere" size="0.01" pos="-0.11 -0.12 0" quat="0.653 0.653 -0.270 -0.270" rgba="0 0 0 0"/>
+            <geom type="ellipsoid" pos="-0.11 -0.12 0" size=".03 .001 .03" quat="0.3827 0 0 0.9239" material="roomba2_decal_color"/>
+            <body name="lwheel2" pos="0.115 0.005 -0.005">
+                <joint name="lwheel2" type="hinge" axis="1 0 0"/>
+                <geom type="cylinder" size="0.04 0.015" quat="0 0.7071 0 0.7071"/>
+            </body>
+            <body name="rwheel2" pos="-0.115 0.005 -0.005">
+                <joint name="rwheel2" type="hinge" axis="1 0 0"/>
+                <geom type="cylinder" size="0.04 0.015" quat="0 0.7071 0 0.7071"/>
+            </body>
+            <body name="fwheel2" pos="0 -0.13 -0.025">
+                <geom type="sphere" size="0.02" friction="0 0 0"/>
+            </body>
+            <body name="fsensor2" pos="0 -0.13 0.02">
+                <geom type="cylinder" size="0.015 0.02" material="roomba2_decal_color" contype="0" conaffinity="0"/>
+            </body>
+            <body name="onbutton2" pos="0 0 0.02">
+                <geom type="cylinder" size="0.03 0.02" material="roomba2_decal_color" contype="0" conaffinity="0"/>
+            </body>
+        </body>
+    </worldbody>
+
+    <actuator>
+        <motor name="lwheel1" joint="lwheel1" gear="2"/>
+        <motor name="rwheel1" joint="rwheel1" gear="2"/>
+        <motor name="lwheel2" joint="lwheel2" gear="2"/>
+        <motor name="rwheel2" joint="rwheel2" gear="2"/>
+    </actuator>
+
+    <sensor>
+        <!-- Roomba 1 -->
+        <touch name="front_sensor1" site="front_sensor1"/>
+        <rangefinder name="front_range1" site="front_range1"/>
+        <touch name="side_sensor_left1" site="side_sensor_left1"/>
+        <rangefinder name="side_left_range1" site="side_left_range1"/>
+        <touch name="side_sensor_right1" site="side_sensor_right1"/>
+        <rangefinder name="side_right_range1" site="side_right_range1"/>
+
+        <!-- Roomba 2 -->
+        <touch name="front_sensor2" site="front_sensor2"/>
+        <rangefinder name="front_range2" site="front_range2"/>
+        <touch name="side_sensor_left2" site="side_sensor_left2"/>
+        <rangefinder name="side_left_range2" site="side_left_range2"/>
+        <touch name="side_sensor_right2" site="side_sensor_right2"/>
+        <rangefinder name="side_right_range2" site="side_right_range2"/>
+    </sensor>
+</mujoco>
