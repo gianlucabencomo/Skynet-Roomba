@@ -42,4 +42,3 @@ except KeyboardInterrupt:
     print("Closing connection.")
 finally:
     server.close()
-
