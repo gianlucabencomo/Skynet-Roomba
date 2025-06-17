@@ -14,7 +14,7 @@ from .mujoco_env import MujocoEnv
 from gymnasium.spaces import Box
 
 CURRENT_DIR = os.path.dirname(__file__)
-DEFAULT_XML_PATH = os.path.join(CURRENT_DIR, "assets", "roomba_v4.xml")
+DEFAULT_XML_PATH = os.path.join(CURRENT_DIR, "assets", "roomba_v6.xml")
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": 0,
     "distance": 5.0,
@@ -40,6 +40,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         match_length: float = 60.0, # 1-minute matches
         reset_noise_scale: float = 1e-2,
         contact_rew_weight: float = 1e-2,
+        center_cost_weight: float = 1e-2,
         train: bool = True,
         **kwargs,
     ):
@@ -64,6 +65,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self._match_length = match_length
         self._reset_noise_scale = reset_noise_scale
         self._contact_rew_weight = contact_rew_weight
+        self._center_cost_weight = center_cost_weight
         self._train = train
         self.metadata = {
             "render_modes": [
@@ -129,9 +131,9 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         sensordata = self.data.sensordata
         maximus_sensor, commodus_sensor = sensordata[:half], sensordata[half:]
 
-        # -- torques --
-        maximus_torqueL, maximus_torqueR = self.data.qfrc_actuator[0], self.data.qfrc_actuator[1]
-        commodus_torqueL, commodus_torqueR = self.data.qfrc_actuator[2], self.data.qfrc_actuator[3]
+        # -- torques (as ctrl input) --
+        maximus_torqueL, maximus_torqueR = self.data.ctrl[0], self.data.ctrl[1]
+        commodus_torqueL, commodus_torqueR = self.data.ctrl[2], self.data.ctrl[3]
 
         maximus_obs = np.concatenate([np.array([maximus_torqueL, maximus_torqueR]), maximus_sensor]) 
         commodus_obs = np.concatenate([np.array([commodus_torqueL, commodus_torqueR]), commodus_sensor])
@@ -195,10 +197,14 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
 
         # exploration reward
         if self._train:
+            maximus_xy = self.data.qpos[0:2]
             maximus_contact = self.data.cfrc_ext[1].flatten()[:3]
+            commodus_xy = self.data.qpos[9:11] 
             commodus_contact = self.data.cfrc_ext[self.data.cfrc_ext.shape[0] // 2 + 1].flatten()[:3]
             reward["maximus"] += self._contact_rew_weight * np.linalg.norm(maximus_contact) 
-            reward["commodus"] += self._contact_rew_weight * np.linalg.norm(commodus_contact) 
+            reward["commodus"] += self._contact_rew_weight * np.linalg.norm(commodus_contact)
+            reward["maximus"] -= self._center_cost_weight * np.linalg.norm(maximus_xy) 
+            reward["commodus"] -= self._center_cost_weight * np.linalg.norm(commodus_xy)
 
         return reward, terminations, truncations
 
@@ -224,9 +230,9 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         )
         if self._train:
             theta1, theta2 = np.random.uniform(low=0., high=2.*np.pi, size=(2,))
-            qpos[0:2] = np.random.uniform(low=-1.5, high=1.5, size=(2,))
+            qpos[0:2] = np.random.uniform(low=-1, high=1, size=(2,))
             qpos[3:7] = np.array([np.cos(theta1/2), 0, 0, np.sin(theta1/2)])
-            qpos[9:11] = np.random.uniform(low=-1.5, high=1.5, size=(2,))
+            qpos[9:11] = np.random.uniform(low=-1, high=1, size=(2,))
             qpos[12:16] = np.array([np.cos(theta2/2), 0, 0, np.sin(theta2/2)])
         self.set_state(qpos, qvel)
         observation = self._get_obs()

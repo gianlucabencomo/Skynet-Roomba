@@ -313,7 +313,7 @@ def train(
                 checkpoint_path = os.path.join(checkpoint_dir, checkpoint_name)
                 torch.save(agent.state_dict(), checkpoint_path)
                 past_agents.append(clone_policy(agent))
-            eval_env = Sumo(contact_rew_weight=0.0)
+            eval_env = Sumo(contact_rew_weight=0.0, center_cost_weight=0.0)
             if frame_stack > 1:
                 eval_env = FrameStackWrapper(eval_env, k=frame_stack)
             reward, length = evaluate_self_play(eval_env, agent, ZeroActionAgent(envs), device)
