@@ -1,0 +1,6 @@
+*.pyc
+runs/*
+checkpoints/*
+uv.lock
+CLAUDE.md
+.python-version
