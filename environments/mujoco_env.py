@@ -156,10 +156,6 @@ class MujocoEnv(gym.Env):
         if self.mujoco_renderer is not None:
             self.mujoco_renderer.close()
 
-    def get_body_com(self, body_name):
-        """Return the cartesian position of a body frame."""
-        return self.data.body(body_name).xpos
-
     def reset(
         self,
         *,
@@ -191,13 +187,6 @@ class MujocoEnv(gym.Env):
                 f"Action dimension mismatch. Expected {(self.model.nu,)}, found {np.array(ctrl).shape}"
             )
         self._step_mujoco_simulation(ctrl, n_frames)
-
-    def state_vector(self) -> NDArray[np.float64]:
-        """Return the position and velocity joint states of the model.
-
-        Note: `qpos` and `qvel` does not constitute the full physics state for all `mujoco` environments see https://mujoco.readthedocs.io/en/stable/computation/index.html#the-state.
-        """
-        return np.concatenate([self.data.qpos.flat, self.data.qvel.flat])
 
     # methods to override:
     # ----------------------------
