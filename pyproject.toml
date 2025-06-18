@@ -1,0 +1,20 @@
+[project]
+name = "ludus_roomba"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "gymnasium==1.1.1",
+    "imageio>=2.37.0",
+    "mujoco==3.3.2",
+    "mujoco-mjx==3.3.2",
+    "numpy==2.3.0",
+    "pettingzoo==1.24.3",
+    "pygame==2.6.1",
+    "supersuit==3.9.3",
+    "tensorboard>=2.19.0",
+    "torch==2.7.0",
+    "tqdm==4.67.1",
+    "typer==0.16.0",
+]
