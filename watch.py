@@ -5,7 +5,7 @@ import numpy as np
 import time
 
 #from environments.sumo_v1 import Sumo
-from environments.sumo_v2 import Sumo
+from environments.sumo_v3 import Sumo
 from models.mlp import MlpContinuousActorCritic
 from utils import get_device
 
