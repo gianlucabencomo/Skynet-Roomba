@@ -4,3 +4,5 @@ checkpoints/*
 uv.lock
 CLAUDE.md
 .python-version
+docs/.DS_Store
+.DS_Store
