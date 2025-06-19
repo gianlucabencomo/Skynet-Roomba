@@ -2,11 +2,11 @@
 
 ![Evil Roomba](docs/assets/room_team_white.png)
 
-Welcome to the **AI Roomba Fight Hackathon**! Train autonomous Roomba agents to battle in epic sumo wrestling matches using cutting-edge reinforcement learning. The goal is simple: **push your opponent out of the ring while staying in yourself!**
+Welcome to the **AI Roomba Fight Hackathon**! Train autonomous AI Roombas to fight in wrestling matches using reinforcement learning. The goal is simple: **push your opponent out of the ring while staying in yourself!**
 
 ## What is This?
 
-This is a reinforcement learning codebase built on top of MuJoCo physics simulation where two Roombas compete in wrestling matches. Your challenge is to train the most effective fighter using any RL techniques you can think of!
+This codebase serves as a starting point to train your fighters built on top of a MuJoCo physics simulation where two Roombas compete in wrestling matches. Your challenge is to train the most effective fighter using any RL techniques you can think of!
 
 ## Installation
 
