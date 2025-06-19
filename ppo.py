@@ -26,7 +26,7 @@ from supersuit import pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1
 from models.mlp import MlpContinuousActorCritic
 from models.base import ZeroActionAgent, RandomActionAgent
 from utils import *
-from environments.sumo_v2 import Sumo  # Main competition environment
+from environments.sumo_v3 import Sumo
 from environments.wrappers import FrameStackWrapper
 from evaluate import evaluate_self_play
 
@@ -418,7 +418,7 @@ def train(
                 past_agents.append(clone_policy(agent))
             # Evaluate current agent performance
             # Use environment without exploration bonuses for fair evaluation
-            eval_env = Sumo(contact_rew_weight=0.0, center_cost_weight=0.0)
+            eval_env = Sumo(contact_rew_weight=0.0)
             if frame_stack > 1:
                 eval_env = FrameStackWrapper(eval_env, k=frame_stack)
             # Test agent against simple baseline (zero action) opponent
