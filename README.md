@@ -1,6 +1,6 @@
 # AI Roomba Fight Hackathon
 
-![Evil Roomba](docs/assets/evil_roomba.png)
+![Evil Roomba](docs/assets/room_team_white.png)
 
 Welcome to the **AI Roomba Fight Hackathon**! Train autonomous Roomba agents to battle in epic sumo wrestling matches using cutting-edge reinforcement learning. The goal is simple: **push your opponent out of the ring while staying in yourself!**
 
