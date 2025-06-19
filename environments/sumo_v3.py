@@ -40,6 +40,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         match_length: float = 60.0, # 1-minute matches
         reset_noise_scale: float = 1e-2,
         contact_rew_weight: float = 1e-2,
+        uwb_sensor_noise: float = 0.05,
         train: bool = True,
         **kwargs,
     ):
@@ -64,6 +65,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self._match_length = match_length
         self._reset_noise_scale = reset_noise_scale
         self._contact_rew_weight = contact_rew_weight
+        self._uwb_sensor_noise = uwb_sensor_noise
         self._train = train
         self.metadata = {
             "render_modes": [
@@ -132,11 +134,14 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         qpos = self.data.qpos.flatten()
         qvel = self.data.qvel.flatten()
 
-        # -- x, y position & velocity --
-        maximus_xy_pos = qpos[0:2]
-        commodus_xy_pos = qpos[9:11]
-        maximus_xy_vel = qvel[0:2]
-        commodus_xy_vel = qvel[8:10]
+        # -- x, y position & velocity (w/ sensor noise) --
+        maximus_xy_pos, maximus_xy_vel = qpos[0:2], qvel[0:2]
+        commodus_xy_pos, commodus_xy_vel = qpos[9:11], qvel[8:10]
+        if self._uwb_sensor_noise > 0.0:
+            maximus_xy_pos += np.random.normal(loc=0.0, scale=self._uwb_sensor_noise, size=(2,))
+            commodus_xy_pos += np.random.normal(loc=0.0, scale=self._uwb_sensor_noise, size=(2,))
+            maximus_xy_vel += np.random.normal(loc=0.0, scale=self._uwb_sensor_noise, size=(2,))
+            commodus_xy_vel += np.random.normal(loc=0.0, scale=self._uwb_sensor_noise, size=(2,))
 
         # -- distance to center --
         maximus_dist = np.linalg.norm(maximus_xy_pos)
@@ -146,6 +151,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         rel_pos = maximus_xy_pos - commodus_xy_pos
         rel_vel = maximus_xy_vel - commodus_xy_vel
 
+        # TODO: add global position + velocity
         maximus_obs = np.concatenate([np.array([maximus_dist, maximus_torqueL, maximus_torqueR]), rel_pos, rel_vel]) 
         commodus_obs = np.concatenate([np.array([commodus_dist, commodus_torqueL, commodus_torqueR]), -rel_pos, -rel_vel])
         return {
@@ -237,9 +243,9 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         )
         if self._train:
             theta1, theta2 = np.random.uniform(low=0., high=2.*np.pi, size=(2,))
-            qpos[0:2] = np.random.uniform(low=-1.5, high=1.5, size=(2,))
+            qpos[0:2] = np.random.uniform(low=-0.75, high=0.75, size=(2,))
             qpos[3:7] = np.array([np.cos(theta1/2), 0, 0, np.sin(theta1/2)])
-            qpos[9:11] = np.random.uniform(low=-1.5, high=1.5, size=(2,))
+            qpos[9:11] = np.random.uniform(low=-0.75, high=0.75, size=(2,))
             qpos[12:16] = np.array([np.cos(theta2/2), 0, 0, np.sin(theta2/2)])
         self.set_state(qpos, qvel)
         observation = self._get_obs()
