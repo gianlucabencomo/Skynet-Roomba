@@ -31,9 +31,7 @@ try:
         left = 0 if abs(left) < 30 else left
         # set to 0 if < 30% power
         right = 0 if abs(right) < 30 else right    
-        #data, _ = server.recvfrom(8)
-        #if data:
-        #    print(data.decode())
+
         command = encode_wheels(right, left)
         print(command)
         server.sendto(command.encode(), (PICO_IP, PORT))

@@ -1,6 +1,7 @@
 HOST = ""        # Listen on all available interfaces
 PORT = 12345     # Choose a port number
-PICO_IP = "192.168.4.56"
+#PICO_IP = "192.168.4.56"
+PICO_IP = "192.168.4.1"
 
 # Position tracking tag IDs
 ROOMBA_1_TAG_ID = "5620"  # This roomba
@@ -24,3 +25,5 @@ PS4_KEYS = {
   "right_arrow": 14,
   "touchpad": 15
 }
+FRAME_STACK = 20
+OBS_DIM = 4  # [left, right, da, db]
