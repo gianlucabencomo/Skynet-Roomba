@@ -1,8 +1,8 @@
 <mujoco model="assets_defaults">
     <default>
         <motor ctrllimited="true" ctrlrange="-1 1"/>
-        <geom density="700"/>
-        <joint damping="0.1" armature="0.1"/>
+        <geom density="700" friction="0.6 0.005 0.0001"/>
+        <joint damping="0.2" armature="0.01"/>
     </default>
 
     <asset>

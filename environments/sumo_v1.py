@@ -49,7 +49,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self,
         frame_skip: int = 50,  # sim @ 500hz, actions @ 10hz
         default_camera_config: Dict[str, Union[float, int]] = DEFAULT_CAMERA_CONFIG,
-        match_length: float = 120.0,  # 2-minute matches
+        match_length: float = 60.0,  # 1-minute matches
         reset_noise_scale: float = 1e-2,
         contact_rew_weight: float = 1e-2,  # rew function is win/lose + exploratory that maximizes contact
         uwb_sensor_noise: float = 0.05,  # for sim2real
@@ -66,12 +66,14 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         xml_file = PATHS[mode.lower()]
         utils.EzPickle.__init__(
             self,
-            xml_file,
             frame_skip,
             default_camera_config,
             match_length,
             reset_noise_scale,
+            contact_rew_weight,
+            uwb_sensor_noise,
             train,
+            mode,
             **kwargs,
         )
         MujocoEnv.__init__(
