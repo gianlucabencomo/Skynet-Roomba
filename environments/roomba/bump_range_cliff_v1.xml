@@ -1,31 +1,11 @@
-<mujoco model="roomba_v1">
-    <option iterations="8" ls_iterations="16" solver="Newton" timestep="0.002">
-        <!-- <flag eulerdamp="disable"/> -->
-    </option>
-    <default>
-        <motor ctrllimited="true" ctrlrange="-1 1"/>
-        <geom density="700"/>
-        <joint damping="0.1" armature="0.1"/>
-    </default>
-    <asset>
-        <texture name="skybox" type="skybox" builtin="gradient" rgb1=".4 .6 .8" rgb2="0 0 0"
-               width="800" height="800" mark="random" markrgb="1 1 1"/>
-        <material name="sky" texture="skybox" emission="1"/>
-        <material name="roomba1_color" rgba="0.2 0.6 1 1"/>   <!-- Blue -->
-        <material name="roomba1_decal_color" rgba="0.22 0.58 0.98 1"/>
-        <material name="roomba2_color" rgba="1 0.3 0.3 1"/>   <!-- Red -->
-        <material name="roomba2_decal_color" rgba="0.98 0.32 0.28 1"/>
-        <material name="floor_color" rgba="0.2 0.2 0.2 1"/>
-    </asset>
-    <!-- <custom>
-        <numeric data="8" name="max_contact_points"/>
-        <numeric data="8" name="max_geom_pairs"/>
-    </custom> -->
+<mujoco model="roomba_bump_range_cliff">
+    <option iterations="8" ls_iterations="16" solver="Newton" timestep="0.002"/>
+    <include file="common/assets_defaults.xml"/>
     <worldbody>
-        <geom name="floor" type="cylinder" size="2 0.1" pos="0 0 0" material="floor_color" friction="0.9 0.005 0.0001"/>
+        <geom name="floor" type="mesh" mesh="oct_floor" pos="0 0 0" quat="0.7071 0.7071 0 0" material="floor_color"/>        
         <light name="light" pos="0 0 7" dir="0 0 -1" mode="fixed"/>
         <camera name="side" pos="-4 0 2" xyaxes="0 -1 0 1 0 2" mode="fixed"/>
-        <body name="roomba1" pos="0 1 0.2">
+        <body name="roomba1" pos="0 0.5 0.2">
             <freejoint name="root1"/>
             <geom name="roomba1" type="cylinder" size="0.1625 0.035" pos="0 0 0" material="roomba1_color"/>
             <site name="front_sensor1" type="ellipsoid" pos="0 -0.1625 0" size=".03 .001 .03" material="roomba1_decal_color"/>
@@ -58,7 +38,7 @@
                 <geom type="cylinder" size="0.03 0.02" material="roomba1_decal_color" contype="0" conaffinity="0"/>
             </body>
         </body>
-        <body name="roomba2" pos="0 -1 0.2" quat="0 0 0 1">
+        <body name="roomba2" pos="0 -0.5 0.2" quat="0 0 0 1">
             <freejoint name="root2"/>
             <geom name="roomba2" type="cylinder" size="0.1625 0.035" pos="0 0 0" material="roomba2_color"/>
             <site name="front_sensor2" type="ellipsoid" pos="0 -0.1625 0" size=".03 .001 .03" material="roomba2_decal_color"/>

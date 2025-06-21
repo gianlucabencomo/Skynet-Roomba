@@ -1,8 +1,8 @@
 __credits__ = ["Gianluca"]
 
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple, Union, Optional
 
-import os
+import os, warnings
 import numpy as np
 
 import mujoco
@@ -13,8 +13,20 @@ from gymnasium import utils
 from .mujoco_env import MujocoEnv
 from gymnasium.spaces import Box
 
+# -- file paths --
 CURRENT_DIR = os.path.dirname(__file__)
-DEFAULT_XML_PATH = os.path.join(CURRENT_DIR, "assets", "roomba_v1.xml")
+BUMP_PATH = os.path.join(CURRENT_DIR, "roomba", "bump_v1.xml")
+BUMP_RANGE_PATH = os.path.join(CURRENT_DIR, "roomba", "bump_range_v1.xml")
+BUMP_RANGE_CLIFF_PATH = os.path.join(CURRENT_DIR, "roomba", "bump_range_cliff_v1.xml")
+UWB_PATH = os.path.join(CURRENT_DIR, "roomba", "uwb_v1.xml")
+PATHS = {
+    "uwb": UWB_PATH,
+    "bump": BUMP_PATH,
+    "bump_range": BUMP_RANGE_PATH,
+    "bump_range_cliff": BUMP_RANGE_CLIFF_PATH,
+}
+
+# -- camera --
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": 0,
     "distance": 5.0,
@@ -22,9 +34,10 @@ DEFAULT_CAMERA_CONFIG = {
     "elevation": -30.0,
 }
 
+
 class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
     metadata = {
-        "name": "sumo_cpu",
+        "name": "sumo",
         "render_modes": [
             "human",
             "rgb_array",
@@ -33,16 +46,24 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
     }
 
     def __init__(
-        self, 
-        xml_file: str = DEFAULT_XML_PATH,
-        frame_skip: int = 50, # sim @ 500hz, actions @ 10hz
+        self,
+        frame_skip: int = 50,  # sim @ 500hz, actions @ 10hz
         default_camera_config: Dict[str, Union[float, int]] = DEFAULT_CAMERA_CONFIG,
-        match_length: float = 60.0, # 1-minute matches
+        match_length: float = 120.0,  # 2-minute matches
         reset_noise_scale: float = 1e-2,
-        contact_rew_weight: float = 1e-2,
-        train: bool = True,
+        contact_rew_weight: float = 1e-2,  # rew function is win/lose + exploratory that maximizes contact
+        uwb_sensor_noise: float = 0.05,  # for sim2real
+        train: bool = True,  # randomly rotate + translate roombas if *not in eval mode
+        mode: str = "uwb",
         **kwargs,
     ):
+        if mode.lower() not in PATHS:
+            warnings.warn(
+                f"Unknown mode '{mode}'; falling back to 'uwb'. Valid modes are {list(PATHS.keys())}.",
+                stacklevel=2,
+            )
+            mode = "uwb"
+        xml_file = PATHS[mode.lower()]
         utils.EzPickle.__init__(
             self,
             xml_file,
@@ -64,6 +85,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self._match_length = match_length
         self._reset_noise_scale = reset_noise_scale
         self._contact_rew_weight = contact_rew_weight
+        self._uwb_sensor_noise = uwb_sensor_noise
         self._train = train
         self.metadata = {
             "render_modes": [
@@ -75,6 +97,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             "render_fps": int(np.round(1.0 / self.dt)),
         }
         self._match_time = 0.0
+        self._mode = mode
         self.setup_spaces()
 
     def setup_spaces(self):
@@ -112,8 +135,12 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
 
         obs_dim = self._get_obs()["maximus"].shape[0]
         self.observation_spaces = {
-            "maximus": Box(low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32),
-            "commodus": Box(low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32),
+            "maximus": Box(
+                low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
+            ),
+            "commodus": Box(
+                low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
+            ),
         }
 
     @property
@@ -125,53 +152,67 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         return ["maximus", "commodus"]
 
     def _get_obs(self):
-        qpos = self.data.qpos.flatten()
-        qvel = self.data.qvel.flatten()
+        # -- torques (as ctrl input) --
+        maximus_torqueL, maximus_torqueR = self.data.ctrl[0], self.data.ctrl[1]
+        commodus_torqueL, commodus_torqueR = self.data.ctrl[2], self.data.ctrl[3]
+        if self._mode == "uwb":
+            qpos = self.data.qpos.flatten()
+            qvel = self.data.qvel.flatten()
+            # -- x, y position & velocity (w/ sensor noise if enabled) --
+            maximus_xy_pos, maximus_xy_vel = qpos[0:2], qvel[0:2]
+            commodus_xy_pos, commodus_xy_vel = qpos[9:11], qvel[8:10]
+            if self._uwb_sensor_noise > 0.0:
+                maximus_xy_pos += np.random.normal(
+                    loc=0.0, scale=self._uwb_sensor_noise, size=(2,)
+                )
+                commodus_xy_pos += np.random.normal(
+                    loc=0.0, scale=self._uwb_sensor_noise, size=(2,)
+                )
+                maximus_xy_vel += np.random.normal(
+                    loc=0.0, scale=self._uwb_sensor_noise, size=(2,)
+                )
+                commodus_xy_vel += np.random.normal(
+                    loc=0.0, scale=self._uwb_sensor_noise, size=(2,)
+                )
 
-        # -- x, y position & velocity --
-        maximus_xy_pos = qpos[0:2]
-        commodus_xy_pos = qpos[9:11]
-        maximus_xy_vel = qvel[0:2]
-        commodus_xy_vel = qvel[8:10]
+            # -- distance to center --
+            maximus_dist = np.linalg.norm(maximus_xy_pos)
+            commodus_dist = np.linalg.norm(commodus_xy_pos)
 
-        # -- quaternions (w,x,y,z) --
-        maximus_quat = qpos[3:7]
-        commodus_quat = qpos[12:16]
+            # -- maximus to commodus relative --
+            rel_pos = maximus_xy_pos - commodus_xy_pos
+            rel_vel = maximus_xy_vel - commodus_xy_vel
 
-        # -- heading --
-        def yaw_sincos(q):
-            w,x,y,z = q
-            return 2*(w*z + x*y), 1 - 2*(y*y + z*z)
+            maximus_obs = np.concatenate(
+                [
+                    np.array([maximus_dist, maximus_torqueL, maximus_torqueR]),
+                    rel_pos,
+                    rel_vel,
+                ]
+            )
+            commodus_obs = np.concatenate(
+                [
+                    np.array([commodus_dist, commodus_torqueL, commodus_torqueR]),
+                    -rel_pos,
+                    -rel_vel,
+                ]
+            )
+        else:
+            # -- pull sensor data from sim and load that as obs --
+            half = self.model.nsensor // 2
+            sensordata = self.data.sensordata
+            maximus_sensor, commodus_sensor = sensordata[:half], sensordata[half:]
+            maximus_obs = np.concatenate(
+                [np.array([maximus_torqueL, maximus_torqueR]), maximus_sensor]
+            )
+            commodus_obs = np.concatenate(
+                [np.array([commodus_torqueL, commodus_torqueR]), commodus_sensor]
+            )
 
-        maximus_sin, maximus_cos = yaw_sincos(maximus_quat)
-        commodus_sin, commodus_cos = yaw_sincos(commodus_quat)
-
-        # -- velocity of left and right wheels --
-        maximus_wdotL, maximus_wdotR = qvel[6], qvel[7]
-        commodus_wdotL, commodus_wdotR = qvel[14], qvel[15]
-
-        # -- distance to center --
-        maximus_dist = np.linalg.norm(maximus_xy_pos)
-        commodus_dist = np.linalg.norm(commodus_xy_pos)
-
-        # -- torques --
-        maximus_torqueL, maximus_torqueR = self.data.qfrc_actuator[0], self.data.qfrc_actuator[1]
-        commodus_torqueL, commodus_torqueR = self.data.qfrc_actuator[2], self.data.qfrc_actuator[3]
-
-        # -- maximus to commodus relative --
-        rel_pos  = maximus_xy_pos - commodus_xy_pos
-        rel_vel  = maximus_xy_vel - commodus_xy_vel
-
-        # -- external forces --
-        maximus_contact = self.data.cfrc_ext[1].flatten()
-        commodus_contact = self.data.cfrc_ext[self.data.cfrc_ext.shape[0] // 2 + 1].flatten()
-
-        maximus_obs = np.concatenate([np.array([maximus_dist, maximus_sin, maximus_cos, maximus_wdotL, maximus_wdotR, maximus_torqueL, maximus_torqueR]), maximus_contact, rel_pos, rel_vel]) 
-        commodus_obs = np.concatenate([np.array([commodus_dist, commodus_sin, commodus_cos, commodus_wdotL, commodus_wdotR, commodus_torqueL, commodus_torqueR]), commodus_contact, -rel_pos, -rel_vel])
         return {
             "maximus": maximus_obs,
             "commodus": commodus_obs,
-        } 
+        }
 
     def step(self, actions):
         total_action = np.zeros(self.model.nu, dtype=np.float32)
@@ -195,13 +236,15 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         commodus_z = self.data.qpos[11]
         time_up = self._match_time > self._match_length
 
+        # -- termination condition for win/lose --
         maximus_out = maximus_z < -1.0
         commodus_out = commodus_z < -1.0
 
-        active = {"maximus": 0., "commodus": 0.}
-        draw = {"maximus": -1000., "commodus": -1000.}
-        max_win = {"maximus": 1000., "commodus": -1000.}
-        com_win = {"maximus": -1000., "commodus": 1000.}
+        # -- win/lose reward --
+        active = {"maximus": 0.0, "commodus": 0.0}
+        draw = {"maximus": -1000.0, "commodus": -1000.0}
+        max_win = {"maximus": 1000.0, "commodus": -1000.0}
+        com_win = {"maximus": -1000.0, "commodus": 1000.0}
 
         if not time_up:
             if not maximus_out and not commodus_out:
@@ -226,15 +269,20 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             truncations = {"maximus": True, "commodus": True}
             reward = draw
 
-        # exploration reward
+        # -- exploration reward (maximize contact) --
         if self._train:
             maximus_contact = self.data.cfrc_ext[1].flatten()[:3]
-            commodus_contact = self.data.cfrc_ext[self.data.cfrc_ext.shape[0] // 2 + 1].flatten()[:3]
-            reward["maximus"] += self._contact_rew_weight * np.linalg.norm(maximus_contact) 
-            reward["commodus"] += self._contact_rew_weight * np.linalg.norm(commodus_contact) 
+            commodus_contact = self.data.cfrc_ext[
+                self.data.cfrc_ext.shape[0] // 2 + 1
+            ].flatten()[:3]
+            reward["maximus"] += self._contact_rew_weight * np.linalg.norm(
+                maximus_contact
+            )
+            reward["commodus"] += self._contact_rew_weight * np.linalg.norm(
+                commodus_contact
+            )
 
         return reward, terminations, truncations
-
 
     def observation_space(self, agent):
         return self.observation_spaces[agent]
@@ -256,12 +304,12 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             low=noise_low, high=noise_high, size=self.model.nv
         )
         if self._train:
-            theta1, theta2 = np.random.uniform(low=0., high=2.*np.pi, size=(2,))
-            qpos[0:2] = np.random.uniform(low=-1.5, high=1.5, size=(2,))
-            qpos[3:7] = np.array([np.cos(theta1/2), 0, 0, np.sin(theta1/2)])
-            qpos[9:11] = np.random.uniform(low=-1.5, high=1.5, size=(2,))
-            qpos[12:16] = np.array([np.cos(theta2/2), 0, 0, np.sin(theta2/2)])
+            # -- during training, randomly translate and rotate roombas around the octagon --
+            theta1, theta2 = np.random.uniform(low=0.0, high=2.0 * np.pi, size=(2,))
+            qpos[0:2] = np.random.uniform(low=-0.75, high=0.75, size=(2,))
+            qpos[3:7] = np.array([np.cos(theta1 / 2), 0, 0, np.sin(theta1 / 2)])
+            qpos[9:11] = np.random.uniform(low=-0.75, high=0.75, size=(2,))
+            qpos[12:16] = np.array([np.cos(theta2 / 2), 0, 0, np.sin(theta2 / 2)])
         self.set_state(qpos, qvel)
         observation = self._get_obs()
         return observation, {"maximus": {}, "commodus": {}}
-        

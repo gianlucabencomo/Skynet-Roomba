@@ -1,0 +1,23 @@
+<mujoco model="assets_defaults">
+    <default>
+        <motor ctrllimited="true" ctrlrange="-1 1"/>
+        <geom density="700"/>
+        <joint damping="0.1" armature="0.1"/>
+    </default>
+
+    <asset>
+        <texture name="skybox" type="skybox" builtin="gradient"
+                rgb1=".4 .6 .8" rgb2="0 0 0"
+                width="800" height="800" mark="random" markrgb="1 1 1"/>
+
+        <material name="sky" texture="skybox" emission="1"/>
+
+        <material name="roomba1_color"         rgba="0.2 0.6 1 1"/>   <!-- Blue -->
+        <material name="roomba1_decal_color"   rgba="0.22 0.58 0.98 1"/>
+        <material name="roomba2_color"         rgba="1 0.3 0.3 1"/>   <!-- Red -->
+        <material name="roomba2_decal_color"   rgba="0.98 0.32 0.28 1"/>
+
+        <material name="floor_color" rgba="0.2 0.2 0.2 1"/>
+        <mesh name="oct_floor" file="octagon.stl" scale="1 1 1"/>
+    </asset>
+</mujoco>

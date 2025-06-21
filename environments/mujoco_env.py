@@ -1,6 +1,6 @@
 """Code below adapted from: https://github.com/Farama-Foundation/Gymnasium/blob/main/gymnasium/envs/mujoco/mujoco_env.py
 
-    Modified by: Gianluca Bencomo
+Modified by: Gianluca Bencomo
 """
 
 from os import path
@@ -33,6 +33,7 @@ def expand_model_path(model_path: str) -> str:
         raise OSError(f"File {fullpath} does not exist")
 
     return fullpath
+
 
 class MujocoEnv(gym.Env):
     """Superclass for MuJoCo based environments."""
