@@ -1,6 +1,9 @@
 import socket
 import pygame
 import time
+import numpy as np
+import threading
+import serial
 
 import torch
 
@@ -21,6 +24,7 @@ for i in range(pygame.joystick.get_count()):
     joystick = pygame.joystick.Joystick(i)
     joystick.init()
     joysticks.append(joystick)
+
 analog_keys, neural = {0: 0, 1: 0, 2: 0, 3: 0}, False
 observations = deque([torch.zeros(OBS_DIM) for _ in range(FRAME_STACK)], maxlen=FRAME_STACK)
 left, right = 0., 0.
@@ -53,8 +57,13 @@ try:
             r_horz = analog_keys[2]
             left, right = l_vert - r_horz, l_vert + r_horz
 
+        # Convert to motor commands
         left  = int(100 * clamp(left))
         right = int(100 * clamp(right))
+        
+        # Update current torques for next observation
+        current_torques = [left, right]
+        
         # dead-band 30 %
         left  = 0 if abs(left)  < 30 else left
         right = 0 if abs(right) < 30 else right
