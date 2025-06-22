@@ -77,9 +77,10 @@ def main(
     ckpt2: str,
     episodes: int = 5,
     frame_stack: int = 1,
+    env_mode: str = "uwb"
 ):
     device = get_device()
-    env = Sumo(train=False, render_mode="human")
+    env = Sumo(mode=env_mode, train=False, render_mode="human")
     if frame_stack > 1:
         env = FrameStackWrapper(env, k=frame_stack)
 

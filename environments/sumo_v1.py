@@ -21,9 +21,9 @@ BUMP_RANGE_CLIFF_PATH = os.path.join(CURRENT_DIR, "roomba", "bump_range_cliff_v1
 UWB_PATH = os.path.join(CURRENT_DIR, "roomba", "uwb_v1.xml")
 PATHS = {
     "uwb": UWB_PATH,
-    "bump": BUMP_PATH,
-    "bump_range": BUMP_RANGE_PATH,
-    "bump_range_cliff": BUMP_RANGE_CLIFF_PATH,
+    "b": BUMP_PATH,
+    "br": BUMP_RANGE_PATH,
+    "brc": BUMP_RANGE_CLIFF_PATH,
 }
 
 # -- camera --
@@ -51,8 +51,12 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         default_camera_config: Dict[str, Union[float, int]] = DEFAULT_CAMERA_CONFIG,
         match_length: float = 60.0,  # 1-minute matches
         reset_noise_scale: float = 1e-2,
-        contact_rew_weight: float = 1e-2,  # rew function is win/lose + exploratory that maximizes contact
+        contact_rew_weight: float = 1e-1,  # rew function is win/lose + exploratory that maximizes contact
+        vel_rew_weight: float = 1e-1,
+        jerk_cost_weight: float = 5e-3,
         uwb_sensor_noise: float = 0.05,  # for sim2real
+        deadband: float = 0.1, # if ctrl < 0.1 then set ctrl = 0
+        alpha: float = 0.2, # EMA
         train: bool = True,  # randomly rotate + translate roombas if *not in eval mode
         mode: str = "uwb",
         **kwargs,
@@ -71,7 +75,11 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             match_length,
             reset_noise_scale,
             contact_rew_weight,
+            vel_rew_weight,
+            jerk_cost_weight,
             uwb_sensor_noise,
+            deadband,
+            alpha,
             train,
             mode,
             **kwargs,
@@ -87,7 +95,10 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self._match_length = match_length
         self._reset_noise_scale = reset_noise_scale
         self._contact_rew_weight = contact_rew_weight
+        self._vel_rew_weight = vel_rew_weight
+        self._jerk_cost_weight = jerk_cost_weight
         self._uwb_sensor_noise = uwb_sensor_noise
+        self._deadband = deadband
         self._train = train
         self.metadata = {
             "render_modes": [
@@ -100,6 +111,10 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         }
         self._match_time = 0.0
         self._mode = mode
+        self._last_action = np.zeros(self.model.nu, dtype=np.float32)
+        self._qvel_tm1 = self.data.qvel.copy()
+        self._qvel_tm2 = self._qvel_tm1.copy()
+        self._alpha = alpha
         self.setup_spaces()
 
     def setup_spaces(self):
@@ -220,12 +235,19 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         total_action = np.zeros(self.model.nu, dtype=np.float32)
         total_action[self.maximus_actuator_inds] = actions["maximus"]
         total_action[self.commodus_actuator_inds] = actions["commodus"]
-
+        # -- apply EMA smoothing --
+        total_action = self._alpha * total_action + (1.0 - self._alpha) * self._last_action
+        # -- save last action --
+        self._last_action = total_action
+        # -- apply deadband --
+        total_action = np.where(np.abs(total_action) < self._deadband, 0.0, total_action)
         self.do_simulation(total_action, self.frame_skip)
 
         observation = self._get_obs()
         self._match_time += self.dt
         rewards, terminations, truncations = self._get_rew()
+        self._qvel_tm2 = self._qvel_tm1.copy()
+        self._qvel_tm1 = self.data.qvel.copy()
         infos = {"maximus": {}, "commodus": {}}
 
         if self.render_mode == "human":
@@ -271,8 +293,8 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             truncations = {"maximus": True, "commodus": True}
             reward = draw
 
-        # -- exploration reward (maximize contact) --
         if self._train:
+            # -- exploration reward (maximize contact) --
             maximus_contact = self.data.cfrc_ext[1].flatten()[:3]
             commodus_contact = self.data.cfrc_ext[
                 self.data.cfrc_ext.shape[0] // 2 + 1
@@ -283,6 +305,22 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             reward["commodus"] += self._contact_rew_weight * np.linalg.norm(
                 commodus_contact
             )
+            # -- exploration reward (maximize velocity towards opp) --
+            qpos = self.data.qpos.flatten()
+            qvel = self.data.qvel.flatten()
+            maximus_xy_pos, maximus_xy_vel = qpos[0:2], qvel[0:2]
+            commodus_xy_pos, commodus_xy_vel = qpos[9:11], qvel[8:10]
+            rel_pos = maximus_xy_pos - commodus_xy_pos
+            rel_vel = maximus_xy_vel - commodus_xy_vel
+            # radial velocity so we don't scale with distance
+            radial_velocity = np.dot(rel_pos, rel_vel) / (np.linalg.norm(rel_pos) + 1e-6)
+            reward["maximus"] += self._vel_rew_weight * max(0.0, radial_velocity)
+            reward["commodus"] += self._vel_rew_weight * max(0.0, -radial_velocity)
+            # -- jerk --
+            jerk = qvel - 2 * self._qvel_tm1 + self._qvel_tm2
+            maximus_jerk, commodus_jerk = jerk[:8], jerk[8:]
+            reward["maximus"] -= self._jerk_cost_weight * np.linalg.norm(maximus_jerk)
+            reward["commodus"] -= self._jerk_cost_weight * np.linalg.norm(commodus_jerk)
 
         return reward, terminations, truncations
 
@@ -297,6 +335,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
 
     def reset(self, seed=None, options=None):
         self._match_time = 0.0
+        self._last_action = np.zeros(self.model.nu, dtype=np.float32)
         noise_low = -self._reset_noise_scale
         noise_high = self._reset_noise_scale
         qpos = self.init_qpos + self.np_random.uniform(
@@ -313,5 +352,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             qpos[9:11] = np.random.uniform(low=-0.75, high=0.75, size=(2,))
             qpos[12:16] = np.array([np.cos(theta2 / 2), 0, 0, np.sin(theta2 / 2)])
         self.set_state(qpos, qvel)
+        self._qvel_tm1 = self.data.qvel.copy()
+        self._qvel_tm2 = self._qvel_tm1.copy()
         observation = self._get_obs()
         return observation, {"maximus": {}, "commodus": {}}

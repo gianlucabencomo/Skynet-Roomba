@@ -35,8 +35,8 @@ def train(
     gamma: float = 0.995,
     gae_lambda: float = 0.95,
     clip_coef: float = 0.2,
-    actor_lr: float = 1e-3,
-    critic_lr: float = 1e-2,
+    actor_lr: float = 5e-4,
+    critic_lr: float = 5e-3,
     ent_coef: float = 0.0,
     max_grad_norm: float = 0.5,
     target_kl: float = 0.01,
@@ -76,7 +76,7 @@ def train(
     device = get_device()
 
     # -- create environment --
-    env = Sumo()
+    env = Sumo(mode=env_mode)
     
     # -- frame stacking --
     if frame_stack > 1:
@@ -302,7 +302,7 @@ def train(
                 past_agents.append(clone_policy(agent))
 
             # -- evaluation --
-            eval_env = Sumo(contact_rew_weight=0.0)
+            eval_env = Sumo(mode=env_mode, contact_rew_weight=0.0)
             if frame_stack > 1:
                 eval_env = FrameStackWrapper(eval_env, k=frame_stack)
             # -- test against zero agent --
