@@ -3,7 +3,8 @@ PORT = 12345
 PICO_IPS = {
     "hotspot" : "192.168.4.1", 
     "base" : "192.168.4.56",
-    "1" : "192.168.4.60"
+    "1" : "192.168.4.60",
+    "2" : "192.168.4.61",
     }
 # Position tracking tag IDs
 ROOMBA_1_TAG_ID = "5620"  # This roomba
@@ -26,4 +27,4 @@ PS4_KEYS = {
     "right_arrow" : 14,
     "touchpad" : 15
     }
-DEADZONE = 30
+DEADBAND = 10
