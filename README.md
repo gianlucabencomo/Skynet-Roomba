@@ -1,4 +1,4 @@
-# Multi-Agent Robotic Sumo Simulation & Training Platform
+# Multi-Agent Robotic Sumo Simulation & Training
 
 ![Roomba Teams](docs/assets/room_team_white.png)
 
