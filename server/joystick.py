@@ -5,7 +5,7 @@ import time
 from helper import encode_wheels, clamp
 from constants import *
 
-def run_joystick(pico_ip: str):
+def run_joystick(pico_ip1: str, pico_ip2: str):
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server.bind((HOST, PORT))
     server.settimeout(0.01)
@@ -18,8 +18,10 @@ def run_joystick(pico_ip: str):
         joysticks.append(joystick)
     analog_keys = {0: 0, 1: 0, 2: 0, 3: 0}
     tricks = {"circle_left": False, "circle_right": False}
+    active_pico = pico_ip1
+    running = True
     try:
-        while True:
+        while running:
             for event in pygame.event.get():
                 if event.type == pygame.JOYAXISMOTION:
                     analog_keys[event.axis] = event.value
@@ -31,6 +33,17 @@ def run_joystick(pico_ip: str):
                     elif event.button == PS4_KEYS['circle']:
                         tricks["circle_left"] = False
                         tricks["circle_right"] = not tricks["circle_right"]
+                    if event.button == PS4_KEYS['triangle']:
+                        if active_pico == pico_ip1:
+                            active_pico = pico_ip2
+                        else:
+                            active_pico = pico_ip1
+                    if event.button == PS4_KEYS['square']:
+                        # kill
+                        server.sendto(encode_wheels(0, 0).encode(), (pico_ip1, PORT))
+                        server.sendto(encode_wheels(0, 0).encode(), (pico_ip2, PORT))
+                        running = False
+                    
 
             if tricks["circle_left"]:
                 left, right = 50, 100
@@ -44,13 +57,13 @@ def run_joystick(pico_ip: str):
                 right = int(100 * clamp(l_vertical + r_horizontal))
 
                 # set to 0 if < DEADZONE% power
-                left = 0 if abs(left) < DEADZONE else left
+                left = 0 if abs(left) < DEADBAND else left
                 # set to 0 if < DEADZONE% power
-                right = 0 if abs(right) < DEADZONE else right    
+                right = 0 if abs(right) < DEADBAND else right    
 
             command = encode_wheels(right, left)
             print(f'Command : {command}')
-            server.sendto(command.encode(), (pico_ip, PORT))
+            server.sendto(command.encode(), (active_pico, PORT))
             time.sleep(0.05) # 20 Hz
     except KeyboardInterrupt:
         print("Closing connection.")
@@ -59,6 +72,7 @@ def run_joystick(pico_ip: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pico", choices=PICO_IPS.keys(), default="base")
+    parser.add_argument("--pico1", choices=PICO_IPS.keys(), default="base")
+    parser.add_argument("--pico2", choices=PICO_IPS.keys(), default="base")
     args = parser.parse_args()
-    run_joystick(PICO_IPS[args.pico])
+    run_joystick(PICO_IPS[args.pico1], PICO_IPS[args.pico2])
