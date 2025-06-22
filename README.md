@@ -1,209 +1,155 @@
-# AI Roomba Fight Hackathon
+# Multi-Agent Robotic Sumo Simulation & Training Platform
 
-![Evil Roomba](docs/assets/room_team_white.png)
+![Roomba Teams](docs/assets/room_team_white.png)
 
-Welcome to the **AI Roomba Fight Hackathon**! Train autonomous AI Roombas to fight using reinforcement learning. The goal is simple: **push your opponent out of the ring while staying in yourself!**
+Welcome to the repository for Ludus Labs' **AI Roomba Fight Hackathon**! This repository is a platform for simulating, training, and evaluating autonomous roomba agents in competitive sumo-style environments. It supports scalable reinforcement learning, self-play, and sim2real transfer for real (jailbroken) Roombas. 
 
-## What is This?
+## Features
 
-This codebase serves as a starting point to train your fighters built on top of a MuJoCo physics simulation where two Roombas fight to the death. Your challenge is to train the most effective fighter using any RL techniques you can think of!
+- **Physics-Accurate Sumo Environments**: Built on MuJoCo and PettingZoo for realistic multi-agent simulation.
+- **Plug-and-Play RL Training**: Out-of-the-box PPO self-play with curriculum learning and vectorized environments.
+- **Sim2Real Transfer**: Tools and code for deploying trained agents to real Roomba robots.
+- **Extensible Models**: Modular neural network architectures and easy algorithm prototyping.
+- **Visualization & Evaluation**: Watch agent battles and analyze performance with TensorBoard.
 
-## Installation
+---
 
-### Prerequisites
+## Quickstart
 
+### 1. Installation
+
+**Prerequisites:**
 - Python 3.12
+- [MuJoCo](https://mujoco.org/) (see their docs for license and install)
 
-### Setup with uv
-
+**Install dependencies:**
 ```bash
 uv sync
 ```
-
-## Train Your First Roomba Fighter
-
-Start training your first Roomba warrior:
-
+Or, if you use pip:
 ```bash
-python ppo.py --total-timesteps 1000000 --n-envs 512
+pip install -r requirements.txt
 ```
 
-This will:
-- Train a PPO agent for 1M timesteps
-- Use 512 parallel environments for faster training
-- Save checkpoints every 20 iterations in `checkpoints/`
-- Log training metrics to TensorBoard in `runs/`
+### 2. Train Your First Roomba Agent
 
-## Watch Your Fighter in Action
+```bash
+python train.py --total-timesteps 100_000_000 --n-envs 1024
+```
+- Trains a PPO agent for 100M timesteps using 1024 parallel environments.
+- Checkpoints are saved in `checkpoints/`.
+- Training logs are written to `runs/` for TensorBoard.
 
-Once you have a trained model, watch it fight:
+### 3. Watch Your Agent Compete
 
 ```bash
 python watch.py --ckpt1 checkpoints/your_model.pt --episodes 5
 ```
+- Visualizes matches between trained agents.
 
-## The Sumo Environment
-
-The competition takes place in a physics-based sumo ring environment defined in `environments/sumo_v2.py`. Here's what you need to know:
-
-### Game Rules
-
-- **Objective**: Push your opponent out of the ring while staying in yourself
-- **Match Duration**: 60 seconds maximum
-- **Victory Conditions**:
-  - Push opponent out → +1000 reward, opponent gets -1000
-  - Get pushed out → -1000 reward, opponent gets +1000  
-  - Time runs out → Both get -1000 (draw)
-
-### Robot Design
-
-The **simulated** Roombas are defined in `environments/assets/roomba_v6.xml` and feature:
-- **Actuators**: Two motorized wheels (left/right)
-- **Range sensors**: Two rangefinder sensors (`side_left_range` and `side_right_range`) that detect distances to objects
-
-The **real** Roombas have TODO
-
-
-### Observation Space
-
-TODO
-
-### Action Space
-
-Agents control their Roomba through:
-- **Continuous actions**: Torque commands for left and right wheels
-- **Action range**: [-1, 1] for each wheel (defined by `ctrlrange` in the XML)
-- **Differential drive**: Different wheel speeds create turning, same speeds create straight movement
-
-## PPO Self-Play Training
-
-We've implemented a complete PPO (Proximal Policy Optimization) training system with self-play in `ppo.py` for you to get started. Here's how it works:
-
-### Self-Play Mechanism
-
-The system uses sophisticated self-play where:
-- **Past Agent Buffer**: Maintains a buffer of up to 50 previous versions of your agent
-- **Opponent Sampling**: Each training episode randomly selects an opponent from this buffer
-- **Curriculum Learning**: Starts with simple opponents (random/zero actions) and gradually faces stronger opponents
-- **Prevents Overfitting**: Diverse opponents prevent your agent from exploiting a single strategy
-
-### PPO Implementation Features
-
-- **Vectorized Environments**: Trains on parallel environments simultaneously
-- **Generalized Advantage Estimation (GAE)**: Advanced advantage computation for stable learning
-- **Separate Actor-Critic Optimizers**: Different learning rates for policy and value networks
-- **Reward Normalization**: Automatic reward scaling for training stability
-- **Gradient Clipping**: Prevents exploding gradients during training
-
-### Key Training Parameters
-
-| Parameter | Description | Default | Recommendation |
-|-----------|-------------|---------|----------------|
-| `--total-timesteps` | Total training steps | 100M | Start with 1-10M for testing |
-| `--n-envs` | Parallel environments | 1024 | Higher = faster (if you have CPU/memory) |
-| `--n-steps` | Steps per rollout | 256 | Larger = more stable |
-| `--actor-lr` | Actor learning rate | 1e-3 | Lower if training is unstable |
-| `--critic-lr` | Critic learning rate | 1e-2 | Usually higher than actor |
-| `--frame-stack` | Frame stacking | 1 | 2-4 can help with temporal dynamics |
-
-### Adding New Algorithms
-
-Want to implement a different RL algorithm? The `ppo.py` file is an excellent starting point:
-1. **Copy `ppo.py`** to `your_algorithm.py`
-2. **Replace the PPO training logic** with your algorithm (SAC, TD3, etc.)
-3. **Modify and add model architecture** in `models/` if needed
-
-### Advanced Training Command
-
-For serious training runs, try this configuration:
-
-```bash
-python ppo.py \
-    --total-timesteps 50000000 \
-    --n-envs 2048 \
-    --n-steps 512 \
-    --actor-lr 5e-4 \
-    --critic-lr 5e-3 \
-    --frame-stack 3 \
-    --run-name "my_champion" \
-    --past-agent-buffer-size 100
-```
-
-### Monitor Training Progress
-
-View training progress in real-time:
+### 4. Monitor Training
 
 ```bash
 tensorboard --logdir runs/
 ```
-
-Open http://localhost:6006 to see:
-- Episode rewards and win rates
-- Policy and value losses
-- Learning curves and statistics
-
-## Tips for Building a Champion Fighter
-
-Here are key areas to focus on to improve your Roomba's fighting ability:
-
-### 1. Reward Engineering (`environments/sumo_v2.py`)
-
-Modify the reward function to encourage specific behaviors:
-- **Aggressive contact**: Increase `contact_rew_weight` for more aggressive fighters
-- **Center control**: Adjust `center_cost_weight` to encourage/discourage center positioning
-- **Custom rewards**: Add your own reward terms for contact forces, distance to opponent, etc.
-
-### 2. The sim2real Gap
-
-TODO
-
-### 3. Model Architecture (`models/mlp.py`)
-
-Experiment with different neural network architectures:
-- **Network size**: Try different `HIDDEN_WIDTHS` configurations
-- **Layer types**: Add LSTM layers for memory, attention mechanisms, etc.
-- **Observation processing**: Modify the observation normalization and processing
-
-### 4. Training Hyperparameters
-
-Key parameters to tune in your training:
-- **Learning rates**: Balance actor and critic learning rates
-- **Frame stacking**: Use `--frame-stack 2-4` to give your agent memory
-- **Environment count**: Increase `--n-envs` for more diverse training data
-- **Training duration**: Longer training often leads to better strategies
-
-### 5. Advanced RL Techniques
-
-- **Curriculum learning**: Start with easier opponents and gradually increase difficulty
-- **Domain randomization**: Vary environment parameters during training
-- **Multi-agent techniques**: Implement population-based training
-- **Different algorithms**: Try SAC, TD3, or other state-of-the-art RL algorithms
-
-## Repository Structure
-
-Here's how the codebase is organized:
-
-### Core Training Files
-- **`ppo.py`** - Main PPO training script with self-play (your starting point!)
-- **`watch.py`** - Visualize and evaluate trained agents
-- **`evaluate.py`** - Automated evaluation functions
-- **`utils.py`** - Utility functions (device selection, etc.)
-
-### Models (`models/`)
-- **`mlp.py`** - MLP-based Actor-Critic networks (modify for new architectures)
-- **`base.py`** - Simple baseline agents (ZeroAction, RandomAction)
-- **`helper.py`** - Neural network utilities (initialization, normalization)
-
-### Environment (`environments/`)
-<!-- - **`sumo_v2.py`** - Main sumo environment (modify rewards here!)
-- **`wrappers.py`** - Environment wrappers (frame stacking, preprocessing)
-- **`mujoco_env.py`** - MuJoCo physics integration
-- **`assets/roomba_v6.xml`** - Robot model definition (modify robot design) -->
-
-### Generated During Training
-- **`checkpoints/`** - Saved model weights (`.pt` files)
-- **`runs/`** - TensorBoard logs and training metrics
+Open [http://localhost:6006](http://localhost:6006) to view live metrics.
 
 ---
 
-Good luck!
+## Project Structure
+
+| Folder/File         | Purpose                                                                 |
+|---------------------|-------------------------------------------------------------------------|
+| `environments/`     | Sumo environments, MuJoCo XMLs, wrappers for RL                         |
+| `models/`           | Neural network architectures and agent baselines                        |
+| `train.py`          | Main PPO self-play training script                                      |
+| `watch.py`          | Visualize and evaluate trained agents                                   |
+| `evaluate.py`       | Automated evaluation utilities                                          |
+| `server/`           | Code for joystick control, neural agent deployment, and networking      |
+| `pico/`             | Microcontroller code for real Roomba integration                        |
+| `checkpoints/`      | Saved model weights                                                     |
+| `runs/`             | TensorBoard logs                                                        |
+| `docs/`             | Documentation and assets                                                |
+| `utils.py`          | Utility functions (device selection, seeding, etc.)                     |
+
+---
+
+## Sumo Environment
+
+- **Objective**: Push your opponent out of the ring while staying in yourself.
+- **Match Duration**: 60 seconds max.
+- **Victory**: +1000 reward for pushing out opponent, -1000 for being pushed out, -1000 each for a draw.
+
+### Realistic Octagon Arena
+
+The simulated sumo ring is modeled as an **octagon**, matching the physical arena used in our living room. This ensures that strategies learned in simulation transfer effectively to the real-world setup, minimizing the sim2real gap.
+
+### Multiple Sensor Modes (XMLs)
+
+You can choose between four different environment XMLs, each representing a different sensor configuration for the Roombas:
+
+- **Native Roomba Sensor Modes** (3 variants):
+  - `b`: Bump sensors only
+  - `br`: Bump + Range sensors
+  - `brc`: Bump + Range + Cliff sensors
+  These modes use the actual sensors available on the physical Roombas, allowing you to experiment with various levels of perception and robustness.
+
+- **Ultra Wide Band (UWB) Mode**:
+  - `uwb`: Uses simulated ultra wide band sensors for localization, providing more precise position information. Ideal for advanced strategies or when testing with additional hardware in the real world.
+
+You can select the mode by setting the `env_mode` parameter when creating the environment or running training scripts.
+
+**Example:**
+```python
+# In train.py or watch.py
+env = Sumo(mode="brc")  # Use bump, range, and cliff sensors
+```
+
+**Robot Model**:  
+- Two motorized wheels (differential drive)
+- Range sensors for obstacle/opponent detection
+
+**Action Space**:  
+- Continuous torques for left/right wheels (range: [-1, 1])
+
+**Observation Space**:  
+- Includes wheel torques and sensor readings (see environment code for details)
+
+---
+
+## Advanced Usage
+
+- **Custom Rewards**: Tweak reward shaping in `environments/sumo_v1.py`.
+- **Model Architectures**: Modify or extend in `models/`.
+- **Algorithm Prototyping**: Use `train.py` as a template for new RL algorithms.
+- **Sim2Real**: Use `server/` and `pico/` for deploying to real robots.
+
+---
+
+## Extending the Platform
+
+- Add new environments by creating MuJoCo XMLs and corresponding Python wrappers.
+- Implement new agent models in `models/`.
+- Contribute documentation in `docs/` and per-folder `README.md` files.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please open issues or pull requests for bug fixes, new features, or documentation improvements.
+
+---
+
+## License
+
+[MIT License](LICENSE) (or specify your license here)
+
+---
+
+## Acknowledgements
+
+- Built with [MuJoCo](https://mujoco.org/), [PettingZoo](https://www.pettingzoo.ml/), and [PyTorch](https://pytorch.org/).
+
+---
+
+**For more details, see the documentation in each folder and the code comments.**
