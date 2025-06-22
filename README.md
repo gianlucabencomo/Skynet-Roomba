@@ -1,8 +1,8 @@
-# Multi-Agent Robotic Sumo Simulation & Training
+# Multi-Agent Roomba Sumo Simulation & Training
 
 ![Roomba Teams](docs/assets/room_team_white.png)
 
-Welcome to the repository for Ludus Labs' **AI Roomba Fight Hackathon**! This repository is a platform for simulating, training, and evaluating autonomous roomba agents in competitive sumo-style environments. It supports scalable reinforcement learning, self-play, and sim2real transfer for real (jailbroken) Roombas. 
+Welcome to the repository for Ludus Labs' **AI Roomba Fight Hackathon**! This repository is a platform for simulating, training, and evaluating autonomous roomba agents in a competitive sumo-style environment that matches the octagon in our living room. It supports scalable reinforcement learning, self-play, and sim2real transfer for real (jailbroken) Roombas. 
 
 ## Features
 
@@ -130,7 +130,6 @@ env = Sumo(mode="brc")  # Use bump, range, and cliff sensors
 
 - Add new environments by creating MuJoCo XMLs and corresponding Python wrappers.
 - Implement new agent models in `models/`.
-- Contribute documentation in `docs/` and per-folder `README.md` files.
 
 ---
 
@@ -142,7 +141,7 @@ Contributions are welcome! Please open issues or pull requests for bug fixes, ne
 
 ## License
 
-[MIT License](LICENSE) (or specify your license here)
+[MIT License](LICENSE)
 
 ---
 
