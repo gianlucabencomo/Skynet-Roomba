@@ -46,7 +46,8 @@ def train(
     frame_stack: int = 1,                   # n of frames to stack for obs when training MLP
     run_name: Optional[str] = None,
     past_agent_buffer_size: int = 50,        # maximum number of previous agents to play against in asynchronous self-play
-    checkpoint_dir = "checkpoints"
+    checkpoint_dir: str = "checkpoints",
+    save_freq: int = 5,                     # after how many updates to save checkpoints / add to buffer
 ):
     """PPO asynchronous self-play with MLP for Sumo. Heavily referenced https://github.com/vwxyzjn/cleanrl."""
     # -- create unique run name ---
@@ -290,7 +291,7 @@ def train(
             )
 
             # -- checkpointing --
-            if iteration % 20 == 0:
+            if iteration % save_freq == 0:
                 os.makedirs(checkpoint_dir, exist_ok=True)
                 if not run_name:
                     checkpoint_name = f"agent_{seed}_train_step_{global_step}.pt"

@@ -29,7 +29,7 @@ PATHS = {
 # -- camera --
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": 0,
-    "distance": 5.0,
+    "distance": 3.0,
     "lookat": np.array((0.0, 0.0, 0.2)),
     "elevation": -30.0,
 }
