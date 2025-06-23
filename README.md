@@ -52,7 +52,7 @@ Open [http://localhost:6006](http://localhost:6006) to view live metrics.
 ### 4. Watch Your Agent Compete
 
 ```bash
-python watch.py --ckpt1 checkpoints/your_model.pt --episodes 5
+python watch.py checkpoints/your_model.pt --episodes 5
 ```
 - Visualizes matches between trained agents.
 
