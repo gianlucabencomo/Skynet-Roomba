@@ -320,6 +320,9 @@ def train(
             writer.add_scalar("losses/explained_variance", explained_var, global_step) 
 
             pbar.update(n_envs * n_steps)
+            
+    # save the final agent
+    torch.save(agent.state_dict(), os.path.join(checkpoint_dir, f"agent_{run_name}_train_step_final_ckpt.pt"))
 
 
 if __name__ == "__main__":
