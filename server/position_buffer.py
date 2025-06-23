@@ -1,57 +1,62 @@
-import threading
-import time
+import threading, time, re, serial
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
+from constants import SERIAL_PORT, BAUD
+
+#  listenerID, tagID, x, y, z, quality, crc
+_POS_RE = re.compile(
+    r"POS,(\d+),(\d+),([-0-9.]+),([-0-9.]+),([-0-9.]+),(\d+),x[0-9A-Fa-f]+"
+)
 
 @dataclass
 class Position:
-    x: float
+    x: float 
     y: float
     z: float
     timestamp: float
 
 class PositionBuffer:
-    """Thread-safe buffer for storing the latest position data for multiple tags."""
-    
-    def __init__(self, max_age_seconds: float = 1.0):
-        self._positions: Dict[str, Position] = {}
+    def __init__(self, max_age=1.0):
+        self._pos: Dict[int, Position] = {}
         self._lock = threading.Lock()
-        self._max_age = max_age_seconds
-    
-    def update_position(self, tag_id: str, x: float, y: float, z: float) -> None:
-        """Update position for a specific tag ID."""
-        with self._lock:
-            self._positions[tag_id] = Position(x, y, z, time.time())
-    
-    def get_position(self, tag_id: str) -> Optional[Position]:
-        """Get the latest position for a tag ID, returns None if too old or not found."""
-        with self._lock:
-            if tag_id not in self._positions:
-                return None
-            
-            position = self._positions[tag_id]
-            if time.time() - position.timestamp > self._max_age:
-                return None
-            
-            return position
-    
-    def get_positions(self, tag_ids: list) -> Dict[str, Optional[Position]]:
-        """Get positions for multiple tag IDs."""
-        return {tag_id: self.get_position(tag_id) for tag_id in tag_ids}
-    
-    def get_relative_position(self, tag1_id: str, tag2_id: str) -> Optional[Tuple[float, float]]:
-        """Get relative position (x, y) from tag1 to tag2."""
-        pos1 = self.get_position(tag1_id)
-        pos2 = self.get_position(tag2_id)
-        
-        if pos1 is None or pos2 is None:
-            return None
-        
-        return (pos2.x - pos1.x, pos2.y - pos1.y)
-    
-    def is_data_fresh(self, tag_id: str) -> bool:
-        """Check if data for tag is fresh (within max_age)."""
-        return self.get_position(tag_id) is not None
+        self._max_age = max_age
 
-# Global position buffer instance
-position_buffer = PositionBuffer() 
+    def update(self, tag: int, x: float, y: float, z: float):
+        with self._lock:
+            self._pos[tag] = Position(x, y, z, time.time())
+
+    def get(self, tag: int) -> Optional[Position]:
+        with self._lock:
+            p = self._pos.get(tag)
+            return p if p and time.time() - p.timestamp < self._max_age else None
+
+    def get_xyt(self) -> Dict[int, Tuple[float, float, float]]:
+        """Returns x, y, timestamp for each tag in the buffer."""
+        with self._lock:
+            return {
+                tag_id: (pos.x, pos.y, pos.timestamp)
+                for tag_id, pos in self._pos.items()
+            }
+
+def reader(buf: PositionBuffer):
+    ser = serial.Serial(SERIAL_PORT, BAUD, timeout=1)
+    for raw in iter(lambda: ser.readline().decode(errors="ignore").strip(), ""):
+        m = _POS_RE.match(raw)
+        if not m:
+            continue
+        _listener, tag_dec, x, y, z, _q = m.groups()
+        buf.update(int(tag_dec), float(x), float(y), float(z))
+
+def test():
+    buf = PositionBuffer()
+    threading.Thread(target=reader, args=(buf,), daemon=True).start()
+
+    while True:
+        xyt = buf.get_xyt()
+        for tag_id, (x, y, t) in xyt.items():
+            print(f"Tag {tag_id}: x={x:.2f}, y={y:.2f}, t={t:.2f}")
+        print("-" * 40)
+        time.sleep(0.1)
+
+if __name__ == "__main__":
+    test()
