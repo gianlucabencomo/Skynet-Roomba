@@ -40,19 +40,21 @@ python train.py --total-timesteps 100_000_000 --n-envs 1024
 - Checkpoints are saved in `checkpoints/`.
 - Training logs are written to `runs/` for TensorBoard.
 
-### 3. Watch Your Agent Compete
+### 3. Monitor Training
+
+```bash
+tensorboard --logdir runs/
+```
+Open [http://localhost:6006](http://localhost:6006) to view live metrics.
+
+
+### 4. Watch Your Agent Compete
 
 ```bash
 python watch.py --ckpt1 checkpoints/your_model.pt --episodes 5
 ```
 - Visualizes matches between trained agents.
 
-### 4. Monitor Training
-
-```bash
-tensorboard --logdir runs/
-```
-Open [http://localhost:6006](http://localhost:6006) to view live metrics.
 
 ---
 
