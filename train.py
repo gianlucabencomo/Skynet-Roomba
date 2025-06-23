@@ -322,6 +322,7 @@ def train(
             pbar.update(n_envs * n_steps)
             
     # save the final agent
+    os.makedirs(checkpoint_dir, exist_ok=True)
     torch.save(agent.state_dict(), os.path.join(checkpoint_dir, f"agent_{run_name}_train_step_final_ckpt.pt"))
 
 
