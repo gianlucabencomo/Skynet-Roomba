@@ -24,11 +24,11 @@ Welcome to the repository for Ludus Labs' **AI Roomba Fight Hackathon**! This re
 
 **Install dependencies:**
 ```bash
-uv sync
+uv sync && source .venv/bin/activate
 ```
 Or, if you use pip:
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### 2. Train Your First Roomba Agent
