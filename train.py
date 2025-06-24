@@ -28,16 +28,16 @@ def train(
     seed: int = 0,
     env_mode: str = "uwb",
     total_timesteps: int = 100_000_000,
-    n_envs: int = 1024,                     # n parallel environments
-    n_steps: int = 256,                     # steps per rollout per environment
+    n_envs: int = 512,                     # n parallel environments
+    n_steps: int = 512,                     # steps per rollout per environment
     n_mbs: int = 64,                        # n mini-batches per epoch (determines batch size)
     epochs_per_update: int = 5,             # n epochs per rollout
     gamma: float = 0.995,
     gae_lambda: float = 0.95,
     clip_coef: float = 0.2,
-    actor_lr: float = 5e-4,
-    critic_lr: float = 5e-3,
-    ent_coef: float = 0.0,
+    actor_lr: float = 1e-3,
+    critic_lr: float = 1e-2,
+    ent_coef: float = 0.01,
     max_grad_norm: float = 0.5,
     target_kl: float = 0.01,
     norm_adv: bool = True,
@@ -47,7 +47,7 @@ def train(
     run_name: Optional[str] = None,
     past_agent_buffer_size: int = 50,        # maximum number of previous agents to play against in asynchronous self-play
     checkpoint_dir: str = "checkpoints",
-    save_freq: int = 5,                     # after how many updates to save checkpoints / add to buffer
+    save_freq: int = 20,                     # after how many updates to save checkpoints / add to buffer
 ):
     """PPO asynchronous self-play with MLP for Sumo. Heavily referenced https://github.com/vwxyzjn/cleanrl."""
     # -- create unique run name ---
@@ -303,7 +303,7 @@ def train(
                 past_agents.append(clone_policy(agent))
 
             # -- evaluation --
-            eval_env = Sumo(mode=env_mode, contact_rew_weight=0.0)
+            eval_env = Sumo(mode=env_mode, contact_rew_weight=0.0, vel_rew_weight=0.0, jerk_cost_weight=0.0)
             if frame_stack > 1:
                 eval_env = FrameStackWrapper(eval_env, k=frame_stack)
             # -- test against zero agent --

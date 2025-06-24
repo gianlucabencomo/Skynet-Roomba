@@ -25,8 +25,8 @@ class MlpContinuousActorCritic(nn.Module):
         self,
         obs_dim,
         action_dim,
-        actor_hidden_widths: list = HIDDEN_WIDTHS[3],
-        critic_hidden_widths: list = HIDDEN_WIDTHS[3],
+        actor_hidden_widths: list = HIDDEN_WIDTHS[4],
+        critic_hidden_widths: list = HIDDEN_WIDTHS[4],
         normalize_obs: bool = True,
     ):
         super().__init__()
