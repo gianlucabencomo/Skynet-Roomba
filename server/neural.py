@@ -4,6 +4,7 @@ import pygame, torch, numpy as np
 from helper   import encode_wheels, clamp, load_checkpoint
 from constants import * 
 from state_buffer import StateBuffer, State, reader
+from collections import deque
 
 MAXIMUS_TAG   = "5620"
 COMMODUS_TAG  = "4F2A"
