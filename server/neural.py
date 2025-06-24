@@ -10,8 +10,8 @@ MAXIMUS_TAG   = "5620"
 COMMODUS_TAG  = "4F2A"
 POLICY_MAX_PATH = "./test_ckpt.pt"
 POLICY_COM_PATH = "./test_ckpt.pt"
-MAX_ALPHA   = 0.2
-COM_ALPHA   = 0.2
+MAX_ALPHA   = 0.4
+COM_ALPHA   = 0.4
 MAX_FRAME_STACK = 10
 COM_FRAME_STACK = 10
 
@@ -71,9 +71,8 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
 
             # ---------- NEURAL mode ------------------------------------------
             if neural_mode:
-                states = buf.get()
-                max_s = states.get(MAXIMUS_TAG)
-                com_s = states.get(COMMODUS_TAG)
+                max_s = buf.get(MAXIMUS_TAG)
+                com_s = buf.get(COMMODUS_TAG)
 
                 if (max_s is not None) and (com_s is not None):
                     obs = build_obs(max_s, last_torque_max, com_s, last_torque_com)
@@ -85,13 +84,20 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
                         for _ in range(COM_FRAME_STACK):
                             obs_com.append(obs["commodus"])
 
+                    com_stacked_obs = np.concatenate(obs_com, axis=0).reshape(1, -1)
+                    com_obs_tensor = torch.from_numpy(com_stacked_obs).float()
+                    max_stacked_obs = np.concatenate(obs_max, axis=0).reshape(1, -1)
+                    max_obs_tensor = torch.from_numpy(max_stacked_obs).float()
+                    print(max_obs_tensor.squeeze())
                     with torch.no_grad():
-                        torque_max = policy_max(list(obs_max)).cpu().numpy()
-                        torque_com = policy_com(list(obs_com)).cpu().numpy()
+                        torque_com, *_ = policy_com.get_action_and_value(com_obs_tensor)
+                        torque_max, *_ = policy_max.get_action_and_value(max_obs_tensor)
+                        torque_com = torque_com.squeeze().cpu().numpy()
+                        torque_max = torque_max.squeeze().cpu().numpy()
 
                     # EMA smoothing
-                    torque_max = EMA_ALPHA * torque_max + (1 - EMA_ALPHA) * last_torque_max
-                    torque_com = EMA_ALPHA * torque_com + (1 - EMA_ALPHA) * last_torque_com
+                    torque_max = MAX_ALPHA * torque_max + (1 - MAX_ALPHA) * last_torque_max
+                    torque_com = COM_ALPHA * torque_com + (1 - COM_ALPHA) * last_torque_com
                     last_torque_max[:] = torque_max
                     last_torque_com[:] = torque_com
 

@@ -15,7 +15,7 @@ class State:
     t: float
 
 class StateBuffer:
-    def __init__(self, origin: Tuple[float, float] = (0.0, 0.0), max_age: float = 1.0):
+    def __init__(self, origin: Tuple[float, float] = (1.8, 1.75), max_age: float = 1.0):
         self._state: Dict[str, State] = {}
         self._lock = threading.Lock()
         self._origin = origin
