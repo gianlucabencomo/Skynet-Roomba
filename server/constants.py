@@ -6,9 +6,8 @@ PICO_IPS = {
     "1" : "192.168.4.60",
     "2" : "192.168.4.61",
     }
-# Position tracking tag IDs
-ROOMBA_1_TAG_ID = "5620"  # This roomba
-ROOMBA_2_TAG_ID = "4F2A"  # Opponent roomba (for now both are the same)
+ROOMBA_0 = "5620"
+ROOMBA_1 = "4F2A"
 PS4_KEYS = {
     "x" : 0,
     "circle" : 1,
