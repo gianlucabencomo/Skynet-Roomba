@@ -7,8 +7,8 @@ from state_buffer import StateBuffer, State, reader
 
 MAXIMUS_TAG   = "5620"
 COMMODUS_TAG  = "4F2A"
-POLICY_MAX_PATH = "./checkpoints/agent_roomba__1__1750709604_train_step_117964800.pt"
-POLICY_COM_PATH = "./checkpoints/agent_roomba__1__1750709604_train_step_117964800.pt"
+POLICY_MAX_PATH = "./test_ckpt.pt"
+POLICY_COM_PATH = "./test_ckpt.pt"
 MAX_ALPHA   = 0.2
 COM_ALPHA   = 0.2
 MAX_FRAME_STACK = 10
