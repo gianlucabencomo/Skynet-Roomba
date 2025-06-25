@@ -10,8 +10,6 @@ def run_joystick(picos: List[str], n_joysticks: int = 1):
     # -- initial checks --
     if n_joysticks not in [1, 2]:
         raise ValueError("Number of joysticks must be either 1 or 2.")
-    if n_joysticks < len(picos):
-        raise ValueError("Number of robots is less than number of controllers.")
     for pico in picos:
         if pico not in PICO_IPS:
             raise ValueError(f"Unknown robot specified: {pico}")
@@ -37,7 +35,8 @@ def run_joystick(picos: List[str], n_joysticks: int = 1):
     try:
         while running:
             for event in pygame.event.get():
-                jid = event.joy # joystick id
+                if event.type in [pygame.JOYAXISMOTION, pygame.JOYBUTTONDOWN]:
+                    jid = event.joy
                 if event.type == pygame.JOYAXISMOTION:
                     analog_keys[jid][event.axis] = event.value
 
