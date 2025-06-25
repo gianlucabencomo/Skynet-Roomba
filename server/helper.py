@@ -38,10 +38,10 @@ def build_obs(max_s: State, max_torque: np.array, com_s: State, com_torque: np.a
     rel_pos = np.array([max_s.x - com_s.x, max_s.y - com_s.y])
     rel_vel = np.array([max_s.vx - com_s.vx, max_s.vy - com_s.vy])
     return {
-        "maximus": np.concatenate(([max_s.dist, *max_torque], rel_pos, rel_vel)).astype(
+        "maximus": np.concatenate(([max_s.x, max_s.y, max_s.vx, max_s.vy, *max_torque], rel_pos, rel_vel)).astype(
             np.float32
         ),
         "commodus": np.concatenate(
-            ([com_s.dist, *com_torque], -rel_pos, -rel_vel)
+            ([com_s.x, com_s.y, com_s.vx, com_s.vy, *com_torque], -rel_pos, -rel_vel)
         ).astype(np.float32),
     }

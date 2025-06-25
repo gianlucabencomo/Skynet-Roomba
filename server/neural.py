@@ -1,7 +1,7 @@
 import argparse, socket, time, threading
 import pygame, torch, numpy as np
 
-from helper import encode_wheels, clamp, load_checkpoint
+from helper import encode_wheels, clamp, load_checkpoint, build_obs
 from constants import *
 from state_buffer import StateBuffer, State, reader
 from collections import deque
@@ -16,27 +16,14 @@ MAX_FRAME_STACK = 10
 COM_FRAME_STACK = 10
 
 policy_max = load_checkpoint(
-    POLICY_MAX_PATH, obs_dim=70, action_dim=2, device="cpu"
+    POLICY_MAX_PATH, obs_dim=100, action_dim=2, actor_hidden_widths=[128, 128], critic_hidden_widths=[128, 128], device="cpu"
 ).eval()
 policy_com = load_checkpoint(
-    POLICY_COM_PATH, obs_dim=70, action_dim=2, device="cpu"
+    POLICY_COM_PATH, obs_dim=100, action_dim=2, actor_hidden_widths=[128, 128], critic_hidden_widths=[128, 128], device="cpu"
 ).eval()
 
 last_torque_max = np.zeros(2, dtype=np.float32)
 last_torque_com = np.zeros(2, dtype=np.float32)
-
-
-def build_obs(max_s: State, max_torque, com_s: State, com_torque) -> dict:
-    rel_pos = np.array([max_s.x - com_s.x, max_s.y - com_s.y])
-    rel_vel = np.array([max_s.vx - com_s.vx, max_s.vy - com_s.vy])
-    return {
-        "maximus": np.concatenate(([max_s.dist, *max_torque], rel_pos, rel_vel)).astype(
-            np.float32
-        ),
-        "commodus": np.concatenate(
-            ([com_s.dist, *com_torque], -rel_pos, -rel_vel)
-        ).astype(np.float32),
-    }
 
 
 def run_joystick(pico_ip1: str, pico_ip2: str):
@@ -103,8 +90,8 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
                     with torch.no_grad():
                         torque_com, *_ = policy_com.get_action_and_value(com_obs_tensor)
                         torque_max, *_ = policy_max.get_action_and_value(max_obs_tensor)
-                        torque_com = torque_com.squeeze().cpu().numpy()
-                        torque_max = torque_max.squeeze().cpu().numpy()
+                        torque_com = -torque_com.squeeze().cpu().numpy()
+                        torque_max = -torque_max.squeeze().cpu().numpy()
 
                     # EMA smoothing
                     torque_max = (
