@@ -2,9 +2,12 @@ import argparse
 import pygame
 import socket
 import time
-from helper import encode_wheels, clamp
+from helper import encode_wheels, clamp, build_obs
 from constants import *
 from typing import List
+from state_buffer import StateBuffer, reader
+import threading
+import numpy as np
 
 def run_joystick(picos: List[str], n_joysticks: int = 1, record: bool = False):
     # -- initial checks --
@@ -64,10 +67,11 @@ def run_joystick(picos: List[str], n_joysticks: int = 1, record: bool = False):
 
             if record:
                 # -- pico 1 --
-                max_s = buf.get(0)
+                max_s = buf.get(UWB_TAGS[0])
+                print(max_s)
                 pico = picos[0]
-                l_vertical = analog_keys[pico][1]  # forward / backward
-                r_horizontal = analog_keys[pico][2]  # left / right
+                l_vertical = analog_keys[0][1]  # forward / backward
+                r_horizontal = analog_keys[0][2]  # left / right
 
                 left = int(100 * clamp(l_vertical - r_horizontal))
                 right = int(100 * clamp(l_vertical + r_horizontal))
@@ -84,10 +88,10 @@ def run_joystick(picos: List[str], n_joysticks: int = 1, record: bool = False):
                 # -- convert and hold pico 1 commands --
                 max_torque = np.array([left / 100., right / 100.])
 
-                com_s = buf.get(1)
+                com_s = buf.get(UWB_TAGS[1])
                 pico = picos[1]
-                l_vertical = analog_keys[pico][1]  # forward / backward
-                r_horizontal = analog_keys[pico][2]  # left / right
+                l_vertical = analog_keys[1][1]  # forward / backward
+                r_horizontal = analog_keys[1][2]  # left / right
 
                 left = int(100 * clamp(l_vertical - r_horizontal))
                 right = int(100 * clamp(l_vertical + r_horizontal))
@@ -134,7 +138,7 @@ def run_joystick(picos: List[str], n_joysticks: int = 1, record: bool = False):
         if record and observations:
             import pickle
             timestamp = int(time.time())
-            with open(f"bc_data_{timestamp}.pkl", "wb") as f:
+            with open(f"bc_data_{len(observations)}.pkl", "wb") as f:
                 pickle.dump(observations, f)
             print(f"Saved {len(observations)} BC samples to bc_data_{timestamp}.pkl")
 
