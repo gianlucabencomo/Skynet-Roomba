@@ -23,17 +23,19 @@ class StateBuffer:
         self._max_age = max_age
 
     def update(self, tag: str, x: float, y: float):
+        ox, oy = self._origin
+        x_rel, y_rel = x - ox, y - oy
+
         with self._lock:
             now = time.time()
             if tag in self._state:
                 prev = self._state[tag]
                 dt = now - prev.t
-                vx = (x - prev.x) / dt if dt > 1e-3 else 0.0
-                vy = (y - prev.y) / dt if dt > 1e-3 else 0.0
+                vx = (x_rel - prev.x) / dt if dt > 1e-3 else 0.0
+                vy = (y_rel - prev.y) / dt if dt > 1e-3 else 0.0
             else:
                 vx = vy = 0.0
-            ox, oy = self._origin
-            self._state[tag] = State(x - ox, y - oy, vx, vy, now)
+            self._state[tag] = State(x_rel, y_rel, vx, vy, now)
 
     def get(self, tag: str) -> State:
         return self._state.get(tag)
