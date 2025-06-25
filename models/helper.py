@@ -3,21 +3,25 @@ import torch.nn as nn
 
 import numpy as np
 
+
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     nn.init.orthogonal_(layer.weight, std)
     nn.init.constant_(layer.bias, bias_const)
     return layer
 
+
 def lstm_init(lstm, std=1.0, bias_const=0.0):
     for name, param in lstm.named_parameters():
-            if "bias" in name:
-                nn.init.constant_(param, bias_const)
-            elif "weight" in name:
-                nn.init.orthogonal_(param, std)
+        if "bias" in name:
+            nn.init.constant_(param, bias_const)
+        elif "weight" in name:
+            nn.init.orthogonal_(param, std)
     return lstm
+
 
 class NormalizeAndClip(nn.Module):
     """Adapted from https://github.com/openai/gym/blob/master/gym/wrappers/normalize.py."""
+
     def __init__(self, obs_dim, clip_range=10.0, epsilon=1e-8):
         super().__init__()
         self.obs_dim = obs_dim
