@@ -65,7 +65,8 @@ def reader(buf: StateBuffer):
             continue
         try:
             _, _, _, tag, xs, ys, *_ = line.decode(errors="ignore").split(",")
-            buf.update(tag, float(xs), float(ys))
+            if xs != "nan" and ys != "nan":
+                buf.update(tag, float(xs), float(ys))
         except ValueError:
             continue
 
