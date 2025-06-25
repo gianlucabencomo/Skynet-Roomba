@@ -6,6 +6,7 @@ from gymnasium.spaces import Box
 
 class FrameStackWrapper(BaseParallelWrapper):
     """FrameStack Wrapper for MLP network to have explicit memory."""
+
     def __init__(self, env, k: int = 4, concat_axis: int = 0):
         super().__init__(env)
         assert k > 0, "`k` (stack size) must be >= 1"

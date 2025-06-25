@@ -12,7 +12,6 @@ class State:
     y: float
     vx: float
     vy: float
-    dist: float
     t: float
 
 
@@ -33,8 +32,8 @@ class StateBuffer:
                 vy = (y - prev.y) / dt if dt > 1e-3 else 0.0
             else:
                 vx = vy = 0.0
-            dist = np.linalg.norm([x - self._origin[0], y - self._origin[1]])
-            self._state[tag] = State(x, y, vx, vy, dist, now)
+            ox, oy = self._origin
+            self._state[tag] = State(x - ox, y - oy, vx, vy, now)
 
     def get(self, tag: str) -> State:
         return self._state.get(tag)
@@ -76,7 +75,7 @@ def main():
     while True:
         for tag, state in buf.get().items():
             print(
-                f"{tag:>8} | x={state.x:6.2f} y={state.y:6.2f} vx={state.vx:5.2f} vy={state.vy:5.2f} speed={state.dist:5.2f}"
+                f"{tag:>8} | x={state.x:6.2f} y={state.y:6.2f} vx={state.vx:5.2f} vy={state.vy:5.2f}"
             )
         time.sleep(0.1)
 

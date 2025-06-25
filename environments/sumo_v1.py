@@ -36,6 +36,14 @@ DEFAULT_CAMERA_CONFIG = {
     "elevation": -30.0,
 }
 
+def get_heading_vector(quat):
+    # -- extract yaw angle from quaternion (assuming planar motion) --
+    qw, qx, qy, qz = quat
+    sin_yaw = 2 * (qw * qz + qx * qy)
+    cos_yaw = 1 - 2 * (qy**2 + qz**2)
+    yaw = np.arctan2(sin_yaw, cos_yaw)
+    return np.array([np.cos(yaw), np.sin(yaw)])  # 2D heading
+
 
 class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
     metadata = {
@@ -54,13 +62,12 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         match_length: float = 60.0,  # 1-minute matches
         reset_noise_scale: float = 1e-2,
         contact_rew_weight: float = 1e-1,  # rew function is win/lose + exploratory that maximizes contact
-        vel_rew_weight: float = 1e-1,
-        jerk_cost_weight: float = 5e-3,
+        symmetry_rew_weight: float = 1e-2,
+        dist_center_weight: float = 1e-2,
         uwb_sensor_noise: float = 0.05,  # for sim2real
-        uwb_lag: float = 0.2, # have observed position / vel etc. lag 0.2 second behind (roughly what it is in real life)
-        deadband: float = 0.1, # if ctrl < 0.1 then set ctrl = 0
-        action_alpha: float = 0.4, # EMA for actions
-        obs_alpha: float = 0.8, # EMA for obs
+        deadband: float = 0.1,  # if ctrl < 0.1 then set ctrl = 0
+        action_alpha: float = 0.2,  # EMA for actions
+        obs_alpha: float = 0.9,  # EMA for obs to replicate UWB filter
         train: bool = True,  # randomly rotate + translate roombas if *not in eval mode
         mode: str = "uwb",
         **kwargs,
@@ -79,10 +86,9 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             match_length,
             reset_noise_scale,
             contact_rew_weight,
-            vel_rew_weight,
-            jerk_cost_weight,
+            symmetry_rew_weight,
+            dist_center_weight,
             uwb_sensor_noise,
-            uwb_lag,
             deadband,
             action_alpha,
             obs_alpha,
@@ -101,10 +107,9 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self._match_length = match_length
         self._reset_noise_scale = reset_noise_scale
         self._contact_rew_weight = contact_rew_weight
-        self._vel_rew_weight = vel_rew_weight
-        self._jerk_cost_weight = jerk_cost_weight
+        self._symmetry_rew_weight = symmetry_rew_weight
+        self._dist_center_weight = dist_center_weight
         self._uwb_sensor_noise = uwb_sensor_noise
-        self._uwb_lag = uwb_lag
         self._deadband = deadband
         self._train = train
         self.metadata = {
@@ -124,13 +129,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self._action_alpha = action_alpha
         self._obs_alpha = obs_alpha
 
-        # buffer length at least 2 (so min .2 lag)
-        maxlen = max(2, int(round(self._uwb_lag / self.dt)))
-
-        self._maximus_buffer = deque(maxlen=maxlen)
         self._maximus_filtered = np.zeros(2)
-
-        self._commodus_buffer = deque(maxlen=maxlen)
         self._commodus_filtered = np.zeros(2)
 
         self.setup_spaces()
@@ -203,25 +202,25 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
                 )
 
             # -- EMA obs --
-            maximus_old, commodus_old = self._maximus_filtered.copy(), self._commodus_filtered.copy()
-            self._maximus_filtered = self._obs_alpha * maximus_xy_pos + (1 - self._obs_alpha) * self._maximus_filtered
-            self._commodus_filtered = self._obs_alpha * commodus_xy_pos + (1 - self._obs_alpha) * self._commodus_filtered
-            
-            self._maximus_buffer.append(self._maximus_filtered.copy())
-            self._commodus_buffer.append(self._commodus_filtered.copy())
-            if len(self._maximus_buffer) < self._maximus_buffer.maxlen:
-                maximus_xy_pos = self._maximus_filtered
-                commodus_xy_pos = self._commodus_filtered
-            else:
-                maximus_xy_pos, commodus_xy_pos = self._maximus_buffer[0], self._commodus_buffer[0]
-                maximus_old, commodus_old = self._maximus_buffer[1], self._commodus_buffer[1]
+            maximus_old, commodus_old = (
+                self._maximus_filtered.copy(),
+                self._commodus_filtered.copy(),
+            )
+            self._maximus_filtered = (
+                self._obs_alpha * maximus_xy_pos
+                + (1 - self._obs_alpha) * self._maximus_filtered
+            )
+            self._commodus_filtered = (
+                self._obs_alpha * commodus_xy_pos
+                + (1 - self._obs_alpha) * self._commodus_filtered
+            )
 
-            maximus_xy_vel = (maximus_xy_pos - maximus_old) / self.dt
-            commodus_xy_vel = (commodus_xy_pos - commodus_old) / self.dt
+            maximus_xy_vel = (self._maximus_filtered - maximus_old) / self.dt
+            commodus_xy_vel = (self._commodus_filtered - commodus_old) / self.dt
 
-            # -- distance to center --
-            maximus_dist = np.linalg.norm(maximus_xy_pos)
-            commodus_dist = np.linalg.norm(commodus_xy_pos)
+            # # -- distance to center --
+            # maximus_dist = np.linalg.norm(maximus_xy_pos)
+            # commodus_dist = np.linalg.norm(commodus_xy_pos)
 
             # -- maximus to commodus relative --
             rel_pos = maximus_xy_pos - commodus_xy_pos
@@ -229,14 +228,18 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
 
             maximus_obs = np.concatenate(
                 [
-                    np.array([maximus_dist, maximus_torqueL, maximus_torqueR]),
+                    maximus_xy_pos,
+                    maximus_xy_vel,
+                    [maximus_torqueL, maximus_torqueR],
                     rel_pos,
                     rel_vel,
                 ]
             )
             commodus_obs = np.concatenate(
                 [
-                    np.array([commodus_dist, commodus_torqueL, commodus_torqueR]),
+                    commodus_xy_pos,
+                    commodus_xy_vel,
+                    [commodus_torqueL, commodus_torqueR],
                     -rel_pos,
                     -rel_vel,
                 ]
@@ -263,11 +266,16 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         total_action[self.maximus_actuator_inds] = actions["maximus"]
         total_action[self.commodus_actuator_inds] = actions["commodus"]
         # -- apply EMA smoothing --
-        total_action = self._action_alpha * total_action + (1.0 - self._action_alpha) * self._last_action
+        total_action = (
+            self._action_alpha * total_action
+            + (1.0 - self._action_alpha) * self._last_action
+        )
         # -- save last action --
         self._last_action = total_action
         # -- apply deadband --
-        total_action = np.where(np.abs(total_action) < self._deadband, 0.0, total_action)
+        total_action = np.where(
+            np.abs(total_action) < self._deadband, 0.0, total_action
+        )
         self.do_simulation(total_action, self.frame_skip)
 
         observation = self._get_obs()
@@ -321,33 +329,76 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             reward = draw
 
         if self._train:
-            # -- exploration reward (maximize contact) --
-            maximus_contact = self.data.cfrc_ext[1].flatten()[:3]
-            commodus_contact = self.data.cfrc_ext[
-                self.data.cfrc_ext.shape[0] // 2 + 1
-            ].flatten()[:3]
-            reward["maximus"] += self._contact_rew_weight * np.linalg.norm(
-                maximus_contact
-            )
-            reward["commodus"] += self._contact_rew_weight * np.linalg.norm(
-                commodus_contact
-            )
-            # -- exploration reward (maximize velocity towards opp) --
-            qpos = self.data.qpos.flatten()
-            qvel = self.data.qvel.flatten()
-            maximus_xy_pos, maximus_xy_vel = qpos[0:2], qvel[0:2]
-            commodus_xy_pos, commodus_xy_vel = qpos[9:11], qvel[8:10]
-            rel_pos = maximus_xy_pos - commodus_xy_pos
-            rel_vel = maximus_xy_vel - commodus_xy_vel
-            # radial velocity so we don't scale with distance
-            radial_velocity = np.dot(rel_pos, rel_vel) / (np.linalg.norm(rel_pos) + 1e-6)
-            reward["maximus"] += self._vel_rew_weight * max(0.0, radial_velocity)
-            reward["commodus"] += self._vel_rew_weight * max(0.0, -radial_velocity)
-            # -- jerk --
-            jerk = qvel - 2 * self._qvel_tm1 + self._qvel_tm2
-            maximus_jerk, commodus_jerk = jerk[:8], jerk[8:]
-            reward["maximus"] -= self._jerk_cost_weight * np.linalg.norm(maximus_jerk)
-            reward["commodus"] -= self._jerk_cost_weight * np.linalg.norm(commodus_jerk)
+            if self._contact_rew_weight > 0.0:
+                # -- exploration reward (maximize contact) --
+                maximus_contact = self.data.cfrc_ext[1].flatten()[:3]
+                commodus_contact = self.data.cfrc_ext[
+                    self.data.cfrc_ext.shape[0] // 2 + 1
+                ].flatten()[:3]
+                reward["maximus"] += self._contact_rew_weight * np.linalg.norm(
+                    maximus_contact
+                )
+                reward["commodus"] += self._contact_rew_weight * np.linalg.norm(
+                    commodus_contact
+                )
+            if self._symmetry_rew_weight > 0.0:
+                # -- symmetry reward: penalize torque difference (spinning) --
+                maximus_diff = abs(self.data.ctrl[0] - self.data.ctrl[1])
+                commodus_diff = abs(self.data.ctrl[2] - self.data.ctrl[3])
+
+                reward["maximus"] -= self._symmetry_rew_weight * maximus_diff
+                reward["commodus"] -= self._symmetry_rew_weight * commodus_diff
+            if self._dist_center_weight > 0.0:
+                # -- distance from center between two opps --
+                qpos = self.data.qpos.flatten()
+                maximus_xy_pos, commodus_xy_pos = qpos[0:2], qpos[9:11]
+                maximus_dist = np.linalg.norm(maximus_xy_pos)
+                commodus_dist = np.linalg.norm(commodus_xy_pos)
+
+                delta = commodus_dist - maximus_dist
+                reward["maximus"] += self._dist_center_weight * delta
+                reward["commodus"] -= self._dist_center_weight * delta
+
+            # if 1:
+            #     # -- reward for velocity toward opponent (radial) --
+            #     qpos = self.data.qpos
+            #     qvel = self.data.qvel
+
+            #     maximus_pos = qpos[0:2]
+            #     commodus_pos = qpos[9:11]
+
+            #     maximus_vel = qvel[0:2]
+            #     commodus_vel = qvel[8:10]
+
+            #     rel_pos = maximus_pos - commodus_pos
+            #     rel_vel = maximus_vel - commodus_vel
+
+            #     rel_dir = rel_pos / (np.linalg.norm(rel_pos) + 1e-6)
+
+            #     radial_velocity = np.dot(rel_vel, rel_dir)
+
+            #     reward["maximus"] += 0.1 * max(0.0, radial_velocity)
+            #     reward["commodus"] += 0.1 * max(0.0, -radial_velocity)
+
+
+            # # -- exploration reward (maximize velocity towards opp) --
+            # qpos = self.data.qpos.flatten()
+            # qvel = self.data.qvel.flatten()
+            # maximus_xy_pos, maximus_xy_vel = qpos[0:2], qvel[0:2]
+            # commodus_xy_pos, commodus_xy_vel = qpos[9:11], qvel[8:10]
+            # rel_pos = maximus_xy_pos - commodus_xy_pos
+            # rel_vel = maximus_xy_vel - commodus_xy_vel
+            # # radial velocity so we don't scale with distance
+            # radial_velocity = np.dot(rel_pos, rel_vel) / (
+            #     np.linalg.norm(rel_pos) + 1e-6
+            # )
+            # reward["maximus"] += self._vel_rew_weight * max(0.0, radial_velocity)
+            # reward["commodus"] += self._vel_rew_weight * max(0.0, -radial_velocity)
+            # # -- jerk --
+            # jerk = qvel - 2 * self._qvel_tm1 + self._qvel_tm2
+            # maximus_jerk, commodus_jerk = jerk[:8], jerk[8:]
+            # reward["maximus"] -= self._jerk_cost_weight * np.linalg.norm(maximus_jerk)
+            # reward["commodus"] -= self._jerk_cost_weight * np.linalg.norm(commodus_jerk)
 
         return reward, terminations, truncations
 
@@ -381,6 +432,8 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self.set_state(qpos, qvel)
         self._qvel_tm1 = self.data.qvel.copy()
         self._qvel_tm2 = self._qvel_tm1.copy()
+        self._maximus_filtered = self.data.qpos[0:2].copy()
+        self._commodus_filtered = self.data.qpos[9:11].copy()
         observation = self._get_obs()
         # don't reset deque so you have different filtering inits
         return observation, {"maximus": {}, "commodus": {}}
