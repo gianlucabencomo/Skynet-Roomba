@@ -5,6 +5,7 @@ import numpy as np
 
 from constants import SERIAL_PORT, BAUD
 
+
 @dataclass
 class State:
     x: float
@@ -13,6 +14,7 @@ class State:
     vy: float
     dist: float
     t: float
+
 
 class StateBuffer:
     def __init__(self, origin: Tuple[float, float] = (1.8, 1.75), max_age: float = 1.0):
@@ -37,6 +39,7 @@ class StateBuffer:
     def get(self, tag: str) -> State:
         return self._state.get(tag)
 
+
 def enter_shell(ser):
     ser.write(b"\r\r")
     ser.flush()
@@ -45,6 +48,7 @@ def enter_shell(ser):
     while time.time() < deadline:
         if b"dwm" in ser.read(ser.in_waiting or 1):
             return
+
 
 def reader(buf: StateBuffer):
     try:
@@ -65,13 +69,17 @@ def reader(buf: StateBuffer):
         except ValueError:
             continue
 
+
 def main():
     buf = StateBuffer()
     threading.Thread(target=reader, args=(buf,), daemon=True).start()
     while True:
         for tag, state in buf.get().items():
-            print(f"{tag:>8} | x={state.x:6.2f} y={state.y:6.2f} vx={state.vx:5.2f} vy={state.vy:5.2f} speed={state.dist:5.2f}")
+            print(
+                f"{tag:>8} | x={state.x:6.2f} y={state.y:6.2f} vx={state.vx:5.2f} vy={state.vy:5.2f} speed={state.dist:5.2f}"
+            )
         time.sleep(0.1)
+
 
 if __name__ == "__main__":
     main()

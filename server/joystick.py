@@ -4,54 +4,60 @@ import socket
 import time
 from helper import encode_wheels, clamp
 from constants import *
+from typing import List
 
-def run_joystick(pico_ip1: str, pico_ip2: str):
+def run_joystick(picos: List[str], n_joysticks: int = 1):
+    # -- initial checks --
+    if n_joysticks not in [1, 2]:
+        raise ValueError("Number of joysticks must be either 1 or 2.")
+    if n_joysticks < len(picos):
+        raise ValueError("Number of robots is less than number of controllers.")
+    for pico in picos:
+        if pico not in PICO_IPS:
+            raise ValueError(f"Unknown robot specified: {pico}")
+    
+    # -- set up server --
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server.bind((HOST, PORT))
     server.settimeout(0.01)
 
+    # -- init joysticks --
     pygame.init()
+    available = pygame.joystick.get_count()
+    if available < n_joysticks:
+        raise RuntimeError(f"Expected {n_joysticks} joystick(s), but only found {available}.")
+    
     joysticks = []
-    for i in range(pygame.joystick.get_count()):
+    for i in range(n_joysticks):
         joystick = pygame.joystick.Joystick(i)
         joystick.init()
         joysticks.append(joystick)
-    analog_keys = {0: 0, 1: 0, 2: 0, 3: 0}
-    tricks = {"circle_left": False, "circle_right": False}
-    active_pico = pico_ip1
+    analog_keys = [{0: 0, 1: 0, 2: 0, 3: 0} for _ in range(n_joysticks)]
     running = True
     try:
         while running:
             for event in pygame.event.get():
+                jid = event.joy # joystick id
                 if event.type == pygame.JOYAXISMOTION:
-                    analog_keys[event.axis] = event.value
+                    analog_keys[jid][event.axis] = event.value
 
                 if event.type == pygame.JOYBUTTONDOWN:
-                    if event.button == PS4_KEYS['x']:
-                        tricks["circle_left"] = not tricks["circle_left"]
-                        tricks["circle_right"] = False
-                    elif event.button == PS4_KEYS['circle']:
-                        tricks["circle_left"] = False
-                        tricks["circle_right"] = not tricks["circle_right"]
-                    if event.button == PS4_KEYS['triangle']:
-                        if active_pico == pico_ip1:
-                            active_pico = pico_ip2
-                        else:
-                            active_pico = pico_ip1
-                    if event.button == PS4_KEYS['square']:
-                        # kill
-                        server.sendto(encode_wheels(0, 0).encode(), (pico_ip1, PORT))
-                        server.sendto(encode_wheels(0, 0).encode(), (pico_ip2, PORT))
+                    if event.button == PS4_KEYS["x"]:
+                        pass
+                    elif event.button == PS4_KEYS["circle"]:
+                        pass
+                    if event.button == PS4_KEYS["triangle"]:
+                        # -- switch active picos for player(s) --
+                        picos = picos[1:] + picos[:1]
+                    if event.button == PS4_KEYS["square"]:
+                        # -- kill --
+                        for pico in picos:
+                            server.sendto(encode_wheels(0, 0).encode(), (PICO_IPS[pico], PORT))
                         running = False
-                    
-
-            if tricks["circle_left"]:
-                left, right = 50, 100
-            elif tricks["circle_right"]:
-                left, right = 100, 50
-            else:
-                l_vertical = analog_keys[1] # forward / backward
-                r_horizontal = analog_keys[2] # left / right
+            for i, keys in enumerate(analog_keys):
+                pico = picos[i]
+                l_vertical = keys[1]  # forward / backward
+                r_horizontal = keys[2]  # left / right
 
                 left = int(100 * clamp(l_vertical - r_horizontal))
                 right = int(100 * clamp(l_vertical + r_horizontal))
@@ -59,20 +65,21 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
                 # set to 0 if < DEADZONE% power
                 left = 0 if abs(left) < DEADBAND else left
                 # set to 0 if < DEADZONE% power
-                right = 0 if abs(right) < DEADBAND else right    
+                right = 0 if abs(right) < DEADBAND else right
 
-            command = encode_wheels(right, left)
-            print(f'Command : {command}')
-            server.sendto(command.encode(), (active_pico, PORT))
-            time.sleep(0.05) # 20 Hz
+                command = encode_wheels(right, left)
+                print(f"{pico} : {command}")
+                server.sendto(command.encode(), (PICO_IPS[pico], PORT))
+            time.sleep(0.05)  # 20 Hz
     except KeyboardInterrupt:
         print("Closing connection.")
     finally:
         server.close()
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--pico1", choices=PICO_IPS.keys(), default="base")
-    parser.add_argument("--pico2", choices=PICO_IPS.keys(), default="base")
+    parser.add_argument("--picos", nargs='+', choices=PICO_IPS.keys(), required=True, help="List of pico names (space separated)")
+    parser.add_argument("--n_joysticks", type=int, required=True, help="Number of joysticks to initialize")
     args = parser.parse_args()
-    run_joystick(PICO_IPS[args.pico1], PICO_IPS[args.pico2])
+    run_joystick(args.picos, args.n_joysticks)
