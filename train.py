@@ -49,6 +49,7 @@ def train(
     past_agent_buffer_size: int = 50,  # maximum number of previous agents to play against in asynchronous self-play
     checkpoint_dir: str = "checkpoints",
     save_freq: int = 20,  # after how many updates to save checkpoints / add to buffer
+    checkpoint_path: Optional[str] = None,  # for continuing training
 ):
     """PPO asynchronous self-play with MLP for Sumo. Heavily referenced https://github.com/vwxyzjn/cleanrl."""
     # -- create unique run name ---
@@ -106,6 +107,22 @@ def train(
     obs_dim = int(np.prod(envs.single_observation_space.shape))
     action_dim = int(np.prod(envs.single_action_space.shape))
     agent = MlpContinuousActorCritic(obs_dim, action_dim).to(device)
+    
+    # -- load checkpoint for continuing training if provided -- 
+    start_global_step = 0
+    if checkpoint_path is not None:
+        print(f"Loading checkpoint from {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
+        agent.load_state_dict(checkpoint)
+        
+        # Extract global step from checkpoint filename if following the naming convention
+        # e.g., "agent_roomba__test_0__1234567890_train_step_1000000.pt"
+        import re
+        match = re.search(r'train_step_(\d+)', checkpoint_path)
+        if match:
+            start_global_step = int(match.group(1))
+            print(f"Resuming from global step: {start_global_step}")
+    
     actor_optimizer = optim.Adam(agent.actor_params(), lr=actor_lr, eps=1e-5)
     critic_optimizer = optim.Adam(agent.critic_params(), lr=critic_lr, eps=1e-5)
 
@@ -120,17 +137,19 @@ def train(
     values = torch.zeros((n_steps, n_envs)).to(device)
 
     # -- training state variables --
-    global_step = 0
-    start_time = time.time()
-
+    global_step = start_global_step  # Start from checkpoint step instead of 0
+    
     # -- obs and reward tracking --
     next_obs, infos = envs.reset()
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(total_envs).to(device)
     reward_rms = RunningMeanStd()
-
+    
     with tqdm.tqdm(total=total_timesteps, desc="Training") as pbar:
-        for iteration in range(1, n_iterations + 1):
+        # Calculate which iteration to start from
+        start_iteration = (start_global_step // batch_size) + 1
+        
+        for iteration in range(start_iteration, n_iterations + 1):
             if anneal_lr:
                 frac = (
                     1.0 - (iteration - 1.0) / n_iterations
