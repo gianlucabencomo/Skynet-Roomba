@@ -36,14 +36,6 @@ DEFAULT_CAMERA_CONFIG = {
     "elevation": -30.0,
 }
 
-def get_heading_vector(quat):
-    # -- extract yaw angle from quaternion (assuming planar motion) --
-    qw, qx, qy, qz = quat
-    sin_yaw = 2 * (qw * qz + qx * qy)
-    cos_yaw = 1 - 2 * (qy**2 + qz**2)
-    yaw = np.arctan2(sin_yaw, cos_yaw)
-    return np.array([np.cos(yaw), np.sin(yaw)])  # 2D heading
-
 
 class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
     metadata = {
@@ -64,10 +56,10 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         contact_rew_weight: float = 1e-1,  # rew function is win/lose + exploratory that maximizes contact
         symmetry_rew_weight: float = 1e-2,
         dist_center_weight: float = 1e-2,
-        uwb_sensor_noise: float = 0.05,  # for sim2real
+        uwb_sensor_noise: float = 0.03,  # for sim2real
         deadband: float = 0.1,  # if ctrl < 0.1 then set ctrl = 0
-        action_alpha: float = 0.2,  # EMA for actions
-        obs_alpha: float = 0.9,  # EMA for obs to replicate UWB filter
+        action_alpha: float = 0.4,  # EMA for actions
+        obs_alpha: float = 0.8,  # EMA for obs to replicate UWB filter
         train: bool = True,  # randomly rotate + translate roombas if *not in eval mode
         mode: str = "uwb",
         **kwargs,
@@ -215,12 +207,10 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
                 + (1 - self._obs_alpha) * self._commodus_filtered
             )
 
+            # maximus_xy_vel = self.data.qvel[0:2] #(self._maximus_filtered - maximus_old) / self.dt
+            # commodus_xy_vel = self.data.qvel[8:10] #(self._commodus_filtered - commodus_old) / self.dt
             maximus_xy_vel = (self._maximus_filtered - maximus_old) / self.dt
             commodus_xy_vel = (self._commodus_filtered - commodus_old) / self.dt
-
-            # # -- distance to center --
-            # maximus_dist = np.linalg.norm(maximus_xy_pos)
-            # commodus_dist = np.linalg.norm(commodus_xy_pos)
 
             # -- maximus to commodus relative --
             rel_pos = maximus_xy_pos - commodus_xy_pos
@@ -341,23 +331,23 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
                 reward["commodus"] += self._contact_rew_weight * np.linalg.norm(
                     commodus_contact
                 )
-            if self._symmetry_rew_weight > 0.0:
-                # -- symmetry reward: penalize torque difference (spinning) --
-                maximus_diff = abs(self.data.ctrl[0] - self.data.ctrl[1])
-                commodus_diff = abs(self.data.ctrl[2] - self.data.ctrl[3])
+            # if self._symmetry_rew_weight > 0.0:
+            #     # -- symmetry reward: penalize torque difference (spinning) --
+            #     maximus_diff = abs(self.data.ctrl[0] - self.data.ctrl[1])
+            #     commodus_diff = abs(self.data.ctrl[2] - self.data.ctrl[3])
 
-                reward["maximus"] -= self._symmetry_rew_weight * maximus_diff
-                reward["commodus"] -= self._symmetry_rew_weight * commodus_diff
-            if self._dist_center_weight > 0.0:
-                # -- distance from center between two opps --
-                qpos = self.data.qpos.flatten()
-                maximus_xy_pos, commodus_xy_pos = qpos[0:2], qpos[9:11]
-                maximus_dist = np.linalg.norm(maximus_xy_pos)
-                commodus_dist = np.linalg.norm(commodus_xy_pos)
+            #     reward["maximus"] -= self._symmetry_rew_weight * maximus_diff
+            #     reward["commodus"] -= self._symmetry_rew_weight * commodus_diff
+            # if self._dist_center_weight > 0.0:
+            #     # -- distance from center between two opps --
+            #     qpos = self.data.qpos.flatten()
+            #     maximus_xy_pos, commodus_xy_pos = qpos[0:2], qpos[9:11]
+            #     maximus_dist = np.linalg.norm(maximus_xy_pos)
+            #     commodus_dist = np.linalg.norm(commodus_xy_pos)
 
-                delta = commodus_dist - maximus_dist
-                reward["maximus"] += self._dist_center_weight * delta
-                reward["commodus"] -= self._dist_center_weight * delta
+            #     delta = commodus_dist - maximus_dist
+            #     reward["maximus"] += self._dist_center_weight * delta
+            #     reward["commodus"] -= self._dist_center_weight * delta
 
             # if 1:
             #     # -- reward for velocity toward opponent (radial) --
