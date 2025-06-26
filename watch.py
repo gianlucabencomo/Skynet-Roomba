@@ -84,7 +84,7 @@ def visualize_match(env, agent1, agent2, device, n_episodes=5):
 
 def main(
     ckpt1: str,
-    ckpt2: str = None,
+    ckpt2: str,
     episodes: int = 5,
     frame_stack: int = 1,
     env_mode: str = "uwb",

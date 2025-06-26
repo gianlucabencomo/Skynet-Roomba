@@ -12,7 +12,6 @@ class State:
     y: float
     vx: float
     vy: float
-    dist: float
     t: float
 
 
@@ -24,17 +23,19 @@ class StateBuffer:
         self._max_age = max_age
 
     def update(self, tag: str, x: float, y: float):
+        ox, oy = self._origin
+        x_rel, y_rel = x - ox, y - oy
+
         with self._lock:
             now = time.time()
             if tag in self._state:
                 prev = self._state[tag]
                 dt = now - prev.t
-                vx = (x - prev.x) / dt if dt > 1e-3 else 0.0
-                vy = (y - prev.y) / dt if dt > 1e-3 else 0.0
+                vx = (x_rel - prev.x) / dt if dt > 1e-3 else 0.0
+                vy = (y_rel - prev.y) / dt if dt > 1e-3 else 0.0
             else:
                 vx = vy = 0.0
-            dist = np.linalg.norm([x - self._origin[0], y - self._origin[1]])
-            self._state[tag] = State(x, y, vx, vy, dist, now)
+            self._state[tag] = State(x_rel, y_rel, vx, vy, now)
 
     def get(self, tag: str) -> State:
         return self._state.get(tag)
@@ -77,7 +78,7 @@ def main():
     while True:
         for tag, state in buf.get().items():
             print(
-                f"{tag:>8} | x={state.x:6.2f} y={state.y:6.2f} vx={state.vx:5.2f} vy={state.vy:5.2f} speed={state.dist:5.2f}"
+                f"{tag:>8} | x={state.x:6.2f} y={state.y:6.2f} vx={state.vx:5.2f} vy={state.vy:5.2f}"
             )
         time.sleep(0.1)
 

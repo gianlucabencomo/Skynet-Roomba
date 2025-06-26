@@ -10,8 +10,8 @@ MAXIMUS_TAG = "5620"
 COMMODUS_TAG = "4F2A"
 POLICY_MAX_PATH = "./test_ckpt.pt"
 POLICY_COM_PATH = "./test_ckpt.pt"
-MAX_ALPHA = 0.4
-COM_ALPHA = 0.4
+MAX_ALPHA = 0.2
+COM_ALPHA = 0.2
 MAX_FRAME_STACK = 10
 COM_FRAME_STACK = 10
 
@@ -67,7 +67,6 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
                             sock.sendto(encode_wheels(0, 0).encode(), (ip, PORT))
                         running = False
 
-            # ---------- NEURAL mode ------------------------------------------
             if neural_mode:
                 max_s = buf.get(MAXIMUS_TAG)
                 com_s = buf.get(COMMODUS_TAG)
@@ -86,12 +85,13 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
                     com_obs_tensor = torch.from_numpy(com_stacked_obs).float()
                     max_stacked_obs = np.concatenate(obs_max, axis=0).reshape(1, -1)
                     max_obs_tensor = torch.from_numpy(max_stacked_obs).float()
-                    print(max_obs_tensor.squeeze())
+
+
                     with torch.no_grad():
                         torque_com, *_ = policy_com.get_action_and_value(com_obs_tensor)
                         torque_max, *_ = policy_max.get_action_and_value(max_obs_tensor)
-                        torque_com = -torque_com.squeeze().cpu().numpy()
-                        torque_max = -torque_max.squeeze().cpu().numpy()
+                        torque_com = torque_com.squeeze().cpu().numpy()
+                        torque_max = torque_max.squeeze().cpu().numpy()
 
                     # EMA smoothing
                     torque_max = (
@@ -106,8 +106,8 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
                     # map to PWM
                     max_left = int(100 * clamp(torque_max[0]))
                     max_right = int(100 * clamp(torque_max[1]))
-                    com_left = int(100 * clamp(torque_com[0]))
-                    com_right = int(100 * clamp(torque_com[1]))
+                    com_left = 0#int(100 * clamp(torque_com[0]))
+                    com_right = 0#int(100 * clamp(torque_com[1]))
                 else:
                     # no fresh UWB → stop both
                     max_left = max_right = com_left = com_right = 0
