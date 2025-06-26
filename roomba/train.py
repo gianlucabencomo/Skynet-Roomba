@@ -28,7 +28,7 @@ from torch.utils.tensorboard import SummaryWriter
 def train(
     seed: int = 0,
     env_mode: str = "uwb",
-    total_timesteps: int = 50_000_000,
+    total_timesteps: int = 100_000_000,
     n_envs: int = 512,  # n parallel environments
     n_steps: int = 512,  # steps per rollout per environment
     n_mbs: int = 64,  # n mini-batches per epoch (determines batch size)
@@ -363,8 +363,18 @@ def train(
             )
 
             # -- logging --
-            writer.add_scalar("results/episode_reward", reward, global_step)
-            writer.add_scalar("results/episode_length", length, global_step)
+            writer.add_scalar("results/episode_reward_0", reward, global_step)
+            writer.add_scalar("results/episode_length_0", length, global_step)
+
+            # -- test against most two agents ago --
+            reward, length = evaluate_self_play(
+                eval_env, agent, past_agents[-2], device
+            )
+
+            # -- logging --
+            writer.add_scalar("results/episode_reward_2", reward, global_step)
+            writer.add_scalar("results/episode_length_2", length, global_step)
+
             writer.add_scalar("losses/entropy", np.mean(entropies), global_step)
             writer.add_scalar("losses/critic_loss", critic_loss.item(), global_step)
             writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
