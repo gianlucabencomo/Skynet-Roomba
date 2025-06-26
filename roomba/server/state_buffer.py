@@ -52,7 +52,7 @@ def enter_shell(ser):
     time.sleep(0.2)
     
     # Increased timeout and better detection
-    deadline = time.time() + 2.0
+    deadline = time.time() + 1.0
     while time.time() < deadline:
         if ser.in_waiting > 0:
             response = ser.read(ser.in_waiting)
