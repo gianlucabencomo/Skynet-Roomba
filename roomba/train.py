@@ -347,7 +347,7 @@ def train(
                 else:
                     checkpoint_name = f"agent_{run_name}_train_step_{global_step}.pt"
                 checkpoint_path = os.path.join(checkpoint_dir, checkpoint_name)
-                torch.save(agent.state_dict(), checkpoint_path)
+                torch.save(agent, checkpoint_path)
                 # -- add to buffer --
                 past_agents.append(clone_policy(agent))
 
@@ -381,7 +381,7 @@ def train(
     # save the final agent
     os.makedirs(checkpoint_dir, exist_ok=True)
     torch.save(
-        agent.state_dict(),
+        agent,
         os.path.join(checkpoint_dir, f"agent_{run_name}_train_step_final_ckpt.pt"),
     )
 
