@@ -76,9 +76,9 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
                     obs_max.append(obs["maximus"])
                     obs_com.append(obs["commodus"])
                     if len(obs_max) == 1:
-                        for _ in range(MAX_FRAME_STACK):
+                        for _ in range(MAX_FRAME_STACK-1):
                             obs_max.append(obs["maximus"])
-                        for _ in range(COM_FRAME_STACK):
+                        for _ in range(COM_FRAME_STACK-1):
                             obs_com.append(obs["commodus"])
 
                     com_stacked_obs = np.concatenate(obs_com, axis=0).reshape(1, -1)
