@@ -3,6 +3,10 @@ import torch.nn as nn
 
 import numpy as np
 
+def atanh(x, eps=1e-6):
+    return 0.5 * torch.log(
+        (1 + x.clamp(-1 + eps, 1 - eps)) / (1 - x.clamp(-1 + eps, 1 - eps))
+    )
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     nn.init.orthogonal_(layer.weight, std)
@@ -20,7 +24,9 @@ def lstm_init(lstm, std=1.0, bias_const=0.0):
 
 
 class NormalizeAndClip(nn.Module):
-    """Adapted from https://github.com/openai/gym/blob/master/gym/wrappers/normalize.py."""
+    """Normalization and Clip layer for NNs that can be saved with .pt files for simplicity.
+    
+    Adapted from https://github.com/openai/gym/blob/master/gym/wrappers/normalize.py."""
 
     def __init__(self, obs_dim, clip_range=10.0, epsilon=1e-8):
         super().__init__()

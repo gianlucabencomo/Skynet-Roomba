@@ -6,13 +6,6 @@ import torch.nn.functional as F
 
 from .helper import *
 
-
-def atanh(x, eps=1e-6):
-    return 0.5 * torch.log(
-        (1 + x.clamp(-1 + eps, 1 - eps)) / (1 - x.clamp(-1 + eps, 1 - eps))
-    )
-
-
 class LSTMContinuousActorCritic(nn.Module):
     def __init__(
         self,

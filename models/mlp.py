@@ -36,13 +36,6 @@ HIDDEN_WIDTHS = [
     [256, 256, 256],
 ]
 
-
-def atanh(x, eps=1e-6):
-    return 0.5 * torch.log(
-        (1 + x.clamp(-1 + eps, 1 - eps)) / (1 - x.clamp(-1 + eps, 1 - eps))
-    )
-
-
 class MlpContinuousActorCritic(nn.Module):
     def __init__(
         self,
