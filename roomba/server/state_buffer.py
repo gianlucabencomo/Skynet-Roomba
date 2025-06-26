@@ -54,13 +54,18 @@ def enter_shell(ser):
     # Increased timeout and better detection
     deadline = time.time() + 2.0
     while time.time() < deadline:
-        if b"dwm" in ser.read(ser.in_waiting or 1):
-            return
+        if ser.in_waiting > 0:
+            response = ser.read(ser.in_waiting)
+            if b"dwm" in response:
+                return
     
-    # Additional attempt if first didn't work
-    ser.write(b"\r")
+    ser.write(b"\r\r")
     ser.flush()
     time.sleep(0.1)
+    deadline = time.time() + 1.0
+    while time.time() < deadline:
+        if b"dwm" in ser.read(ser.in_waiting or 1):
+            return
 
 
 def reader(buf: StateBuffer):
@@ -75,6 +80,7 @@ def reader(buf: StateBuffer):
     while True:
         line = ser.readline()
         if not line.startswith(b"POS,"):
+            enter_shell(ser)
             continue
         try:
             _, _, _, tag, xs, ys, *_ = line.decode(errors="ignore").split(",")
