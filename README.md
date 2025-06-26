@@ -118,10 +118,10 @@ env = Sumo(mode="brc")  # Use bump, range, and cliff sensors
 
 ## Advanced Usage
 
-- **Custom Rewards**: Tweak reward shaping in `environments/sumo_v1.py`.
-- **Model Architectures**: Modify or extend in `models/`.
-- **Algorithm Prototyping**: Use `train.py` as a template for new RL algorithms.
-- **Sim2Real**: Use `server/` and `pico/` for deploying to real robots.
+- **Custom Rewards**: Tweak reward shaping in `roomba/environments/sumo_v1.py`.
+- **Model Architectures**: Modify or extend in `roomba/models/`.
+- **Algorithm Prototyping**: Use `roomba/train.py` as a template for new RL algorithms.
+- **Sim2Real**: Use `roomba/server/` and `pico/` for deploying to real robots.
 
 ---
 
