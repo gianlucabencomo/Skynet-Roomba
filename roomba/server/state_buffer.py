@@ -42,13 +42,27 @@ class StateBuffer:
 
 
 def enter_shell(ser):
-    ser.write(b"\r\r")
+    # Clear any existing data in buffers
+    ser.reset_input_buffer()
+    ser.reset_output_buffer()
+    
+    # Send multiple carriage returns to ensure shell prompt
+    ser.write(b"\r\r\r")
+    ser.flush()
+    time.sleep(0.2)
+    
+    # Increased timeout and better detection
+    deadline = time.time() + 2.0
+    while time.time() < deadline:
+        if ser.in_waiting > 0:
+            response = ser.read(ser.in_waiting)
+            if b"dwm" in response:
+                return
+    
+    # Additional attempt if first didn't work
+    ser.write(b"\r")
     ser.flush()
     time.sleep(0.1)
-    deadline = time.time() + 1.0
-    while time.time() < deadline:
-        if b"dwm" in ser.read(ser.in_waiting or 1):
-            return
 
 
 def reader(buf: StateBuffer):
