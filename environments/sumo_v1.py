@@ -124,6 +124,9 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self._maximus_filtered = np.zeros(2)
         self._commodus_filtered = np.zeros(2)
 
+        self._maximus_vel_history = deque(maxlen=5)
+        self._commodus_vel_history = deque(maxlen=5)
+
         self.setup_spaces()
 
     def setup_spaces(self):
@@ -212,8 +215,14 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             maximus_xy_vel = (self._maximus_filtered - maximus_old) / self.dt
             commodus_xy_vel = (self._commodus_filtered - commodus_old) / self.dt
 
+            self._maximus_vel_history.append(maximus_xy_vel)
+            self._commodus_vel_history.append(commodus_xy_vel)
+
+            maximus_xy_vel = np.mean(self._maximus_vel_history, axis=0)
+            commodus_xy_vel = np.mean(self._commodus_vel_history, axis=0)
+
             # -- maximus to commodus relative --
-            rel_pos = maximus_xy_pos - commodus_xy_pos
+            rel_pos = self._maximus_filtered - self._commodus_filtered
             rel_vel = maximus_xy_vel - commodus_xy_vel
 
             maximus_obs = np.concatenate(
@@ -424,6 +433,8 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self._qvel_tm2 = self._qvel_tm1.copy()
         self._maximus_filtered = self.data.qpos[0:2].copy()
         self._commodus_filtered = self.data.qpos[9:11].copy()
+        self._maximus_vel_history.clear()
+        self._commodus_vel_history.clear()
         observation = self._get_obs()
         # don't reset deque so you have different filtering inits
         return observation, {"maximus": {}, "commodus": {}}
