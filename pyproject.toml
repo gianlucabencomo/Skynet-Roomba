@@ -20,3 +20,5 @@ dependencies = [
     "tqdm==4.67.1",
     "typer==0.16.0",
 ]
+[tool.setuptools.packages.find]
+include = ["roomba*"]

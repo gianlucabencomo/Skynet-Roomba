@@ -6,3 +6,5 @@ CLAUDE.md
 .python-version
 docs/.DS_Store
 .DS_Store
+*.egg*
+__pycache__

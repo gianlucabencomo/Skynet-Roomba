@@ -6,9 +6,9 @@ from constants import *
 
 
 def init_motors():
-    f1 = PWM(Pin(16, Pin.OUT))
+    f1 = PWM(Pin(16, Pin.OUT))  # Right
     b1 = PWM(Pin(17, Pin.OUT))  # Right
-    f2 = PWM(Pin(18, Pin.OUT))
+    f2 = PWM(Pin(18, Pin.OUT))  # Left
     b2 = PWM(Pin(19, Pin.OUT))  # Left
     for m in (f1, b1, f2, b2):
         m.freq(PWM_FREQ)
