@@ -361,8 +361,8 @@ def train(
             )
 
             # -- logging --
-            writer.add_scalar("results/episode_reward_0", reward, global_step)
-            writer.add_scalar("results/episode_length_0", length, global_step)
+            writer.add_scalar("results/episode_reward_v_static_agent", reward, global_step)
+            writer.add_scalar("results/episode_length_v_static_agent", length, global_step)
 
             # -- test against most two agents ago --
             reward, length = evaluate_self_play(
@@ -370,8 +370,8 @@ def train(
             )
 
             # -- logging --
-            writer.add_scalar("results/episode_reward_2", reward, global_step)
-            writer.add_scalar("results/episode_length_2", length, global_step)
+            writer.add_scalar("results/episode_reward_v_past_agent", reward, global_step)
+            writer.add_scalar("results/episode_length_v_past_agent", length, global_step)
 
             writer.add_scalar("losses/entropy", np.mean(entropies), global_step)
             writer.add_scalar("losses/critic_loss", critic_loss.item(), global_step)
