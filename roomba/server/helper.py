@@ -2,8 +2,8 @@ import torch
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import numpy as np
-from state_buffer import State
-from environments.sumo_v1 import Sumo
+from roomba.server.state_buffer import State
+from roomba.environments.sumo_v1 import Sumo
 
 
 def encode_wheels(x, y):
