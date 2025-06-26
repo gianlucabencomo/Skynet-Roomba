@@ -52,11 +52,13 @@ def train(
     uwb_sensor_noise: float = 0.01,
     action_alpha: float = 0.4,
     obs_alpha: float = 0.6,
+    run_name: str = None,
 ):
     """PPO asynchronous self-play with MLP for Sumo. Heavily referenced https://github.com/vwxyzjn/cleanrl."""
     # -- create unique run name ---
     timestamp = int(time.time())
-    run_name = f"s{seed}_fs{frame_stack}_ns{n_steps}_uwb{uwb_sensor_noise:.2f}".replace('.', '_')
+    if run_name is None: 
+        run_name = f"s{seed}_fs{frame_stack}_ns{n_steps}_uwb{uwb_sensor_noise:.2f}".replace('.', '_')
 
     # -- initialize TensorBoard writer --
     writer = SummaryWriter(f"runs/{run_name}")
