@@ -21,16 +21,9 @@ def clamp(x, min_val=-1, max_val=1):
 
 def load_checkpoint(
     checkpoint_path: str,
-    obs_dim: int,
-    action_dim: int,
-    actor_hidden_widths: List[int],
-    critic_hidden_widths: List[int],
     device: str = "cpu",
-):
-    agent = MlpContinuousActorCritic(obs_dim, action_dim, actor_hidden_widths, critic_hidden_widths).to(device)
-    agent.load_state_dict(
-        torch.load(checkpoint_path, map_location=device, weights_only=True)
-    )
+):  
+    agent = torch.load(checkpoint_path, map_location=device, weights_only=False)
     agent.eval()
     return agent
 

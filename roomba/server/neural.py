@@ -16,10 +16,10 @@ MAX_FRAME_STACK = 10
 COM_FRAME_STACK = 10
 
 policy_max = load_checkpoint(
-    POLICY_MAX_PATH, obs_dim=100, action_dim=2, actor_hidden_widths=[128, 128], critic_hidden_widths=[128, 128], device="cpu"
+    POLICY_MAX_PATH, device="cpu"
 ).eval()
 policy_com = load_checkpoint(
-    POLICY_COM_PATH, obs_dim=100, action_dim=2, actor_hidden_widths=[128, 128], critic_hidden_widths=[128, 128], device="cpu"
+    POLICY_COM_PATH, device="cpu"
 ).eval()
 
 last_torque_max = np.zeros(2, dtype=np.float32)

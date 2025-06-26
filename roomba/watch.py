@@ -9,11 +9,11 @@ from roomba.utils import get_device
 
 
 
-def load_checkpoint(checkpoint_path, obs_dim, action_dim, device):
-    agent = MlpContinuousActorCritic(obs_dim, action_dim).to(device)
-    agent.load_state_dict(
-        torch.load(checkpoint_path, map_location=device, weights_only=True)
-    )
+def load_checkpoint(
+    checkpoint_path: str,
+    device: str = "cpu",
+):  
+    agent = torch.load(checkpoint_path, map_location=device, weights_only=False)
     agent.eval()
     return agent
 
@@ -94,11 +94,11 @@ def main(
     ]  # Use actual shape from environment
     action_dim = env.action_spaces["maximus"].shape[0]
 
-    agent1 = load_checkpoint(ckpt1, obs_dim, action_dim, device)
+    agent1 = load_checkpoint(ckpt1)
     if ckpt2 is None:
         agent2 = deepcopy(agent1)
     else:
-        agent2 = load_checkpoint(ckpt2, obs_dim, action_dim, device)
+        agent2 = load_checkpoint(ckpt2)
 
     # Run visualization
     print(f"Starting visualization for {episodes} episodes...")

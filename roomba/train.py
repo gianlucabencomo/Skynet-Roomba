@@ -28,7 +28,7 @@ from torch.utils.tensorboard import SummaryWriter
 def train(
     seed: int = 0,
     env_mode: str = "uwb",
-    total_timesteps: int = 100_000_000,
+    total_timesteps: int = 50_000_000,
     n_envs: int = 512,  # n parallel environments
     n_steps: int = 512,  # steps per rollout per environment
     n_mbs: int = 64,  # n mini-batches per epoch (determines batch size)
@@ -45,19 +45,18 @@ def train(
     clip_vloss: bool = True,
     anneal_lr: bool = True,
     frame_stack: int = 1,  # n of frames to stack for obs when training MLP
-    run_name: Optional[str] = None,
     past_agent_buffer_size: int = 50,  # maximum number of previous agents to play against in asynchronous self-play
     checkpoint_dir: str = "checkpoints",
     save_freq: int = 20,  # after how many updates to save checkpoints / add to buffer
     checkpoint_path: Optional[str] = None,  # for continuing training
+    uwb_sensor_noise: float = 0.01,
+    action_alpha: float = 0.4,
+    obs_alpha: float = 0.6,
 ):
     """PPO asynchronous self-play with MLP for Sumo. Heavily referenced https://github.com/vwxyzjn/cleanrl."""
     # -- create unique run name ---
     timestamp = int(time.time())
-    if run_name is None:
-        run_name = f"roomba__{seed}__{timestamp}"
-    else:
-        run_name = f"roomba__{run_name}_{seed}__{timestamp}"
+    run_name = f"s{seed}_fs{frame_stack}_ns{n_steps}_uwb{uwb_sensor_noise:.2f}".replace('.', '_')
 
     # -- initialize TensorBoard writer --
     writer = SummaryWriter(f"runs/{run_name}")
@@ -80,7 +79,7 @@ def train(
     device = get_device()
 
     # -- create environment --
-    env = Sumo(mode=env_mode)
+    env = Sumo(mode=env_mode, uwb_sensor_noise=uwb_sensor_noise, action_alpha=action_alpha, obs_alpha=obs_alpha)
 
     # -- frame stacking --
     if frame_stack > 1:
@@ -342,12 +341,9 @@ def train(
             # -- checkpointing --
             if iteration % save_freq == 0:
                 os.makedirs(checkpoint_dir, exist_ok=True)
-                if not run_name:
-                    checkpoint_name = f"agent_{seed}_train_step_{global_step}.pt"
-                else:
-                    checkpoint_name = f"agent_{run_name}_train_step_{global_step}.pt"
+                checkpoint_name = run_name + f"_ts_{global_step}.pt"
                 checkpoint_path = os.path.join(checkpoint_dir, checkpoint_name)
-                torch.save(agent.state_dict(), checkpoint_path)
+                torch.save(agent, checkpoint_path)
                 # -- add to buffer --
                 past_agents.append(clone_policy(agent))
 
@@ -356,7 +352,8 @@ def train(
                 mode=env_mode,
                 contact_rew_weight=0.0,
                 dist_center_weight=0.0,
-                symmetry_rew_weight=0.0
+                symmetry_rew_weight=0.0,
+                uwb_sensor_noise=uwb_sensor_noise, action_alpha=action_alpha, obs_alpha=obs_alpha
             )
             if frame_stack > 1:
                 eval_env = FrameStackWrapper(eval_env, k=frame_stack)
@@ -381,8 +378,8 @@ def train(
     # save the final agent
     os.makedirs(checkpoint_dir, exist_ok=True)
     torch.save(
-        agent.state_dict(),
-        os.path.join(checkpoint_dir, f"agent_{run_name}_train_step_final_ckpt.pt"),
+        agent,
+        os.path.join(checkpoint_dir, run_name + f"_ts_final.pt"),
     )
 
 
