@@ -54,10 +54,8 @@ def enter_shell(ser):
     # Increased timeout and better detection
     deadline = time.time() + 2.0
     while time.time() < deadline:
-        if ser.in_waiting > 0:
-            response = ser.read(ser.in_waiting)
-            if b"dwm" in response:
-                return
+        if b"dwm" in ser.read(ser.in_waiting or 1):
+            return
     
     # Additional attempt if first didn't work
     ser.write(b"\r")
