@@ -33,7 +33,7 @@ pip install -e .
 ### 2. Train Your First Roomba Agent
 
 ```bash
-python train.py --total-timesteps 100_000_000 --n-envs 1024
+python roomba/train.py --total-timesteps 100_000_000 --n-envs 1024
 ```
 - Trains a PPO agent for 100M timesteps using 1024 parallel environments.
 - Checkpoints are saved in `checkpoints/`.
@@ -51,7 +51,7 @@ Open [http://localhost:6006](http://localhost:6006) to view live metrics.
 ### 4. Watch Your Agent Compete
 
 ```bash
-python watch.py checkpoints/your_model.pt --episodes 5
+python roomba/watch.py checkpoints/your_model.pt --episodes 5
 ```
 - Visualizes matches between trained agents.
 
@@ -59,17 +59,17 @@ python watch.py checkpoints/your_model.pt --episodes 5
 
 | Folder/File         | Purpose                                                                 |
 |---------------------|-------------------------------------------------------------------------|
-| `environments/`     | Sumo environments, MuJoCo XMLs, wrappers for RL                         |
-| `models/`           | Neural network architectures and agent baselines                        |
-| `train.py`          | Main PPO self-play training script                                      |
-| `watch.py`          | Visualize and evaluate trained agents                                   |
-| `evaluate.py`       | Automated evaluation utilities                                          |
-| `server/`           | Code for joystick control, neural agent deployment, and networking      |
+| `roomba/environments/`     | Sumo environments, MuJoCo XMLs, wrappers for RL                         |
+| `roomba/models/`           | Neural network architectures and agent baselines                        |
+| `roomba/train.py`          | Main PPO self-play training script                                      |
+| `roomba/watch.py`          | Visualize and evaluate trained agents                                   |
+| `roomba/evaluate.py`       | Automated evaluation utilities                                          |
+| `roomba/server/`           | Code for joystick control, neural agent deployment, and networking      |
 | `pico/`             | Microcontroller code for real Roomba integration                        |
 | `checkpoints/`      | Saved model weights                                                     |
 | `runs/`             | TensorBoard logs                                                        |
 | `docs/`             | Documentation and assets                                                |
-| `utils.py`          | Utility functions (device selection, seeding, etc.)                     |
+| `roomba/utils.py`          | Utility functions (device selection, seeding, etc.)                     |
 
 ---
 
@@ -118,10 +118,10 @@ env = Sumo(mode="brc")  # Use bump, range, and cliff sensors
 
 ## Advanced Usage
 
-- **Custom Rewards**: Tweak reward shaping in `environments/sumo_v1.py`.
-- **Model Architectures**: Modify or extend in `models/`.
-- **Algorithm Prototyping**: Use `train.py` as a template for new RL algorithms.
-- **Sim2Real**: Use `server/` and `pico/` for deploying to real robots.
+- **Custom Rewards**: Tweak reward shaping in `roomba/environments/sumo_v1.py`.
+- **Model Architectures**: Modify or extend in `roomba/models/`.
+- **Algorithm Prototyping**: Use `roomba/train.py` as a template for new RL algorithms.
+- **Sim2Real**: Use `roomba/server/` and `pico/` for deploying to real robots.
 
 ---
 
