@@ -113,13 +113,11 @@ def train(
     start_global_step = 0
     if checkpoint_path is not None:
         print(f"Loading checkpoint from {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
-        agent.load_state_dict(checkpoint)
+        agent = torch.load(checkpoint_path, map_location=device, weights_only=False)
         
         # Extract global step from checkpoint filename if following the naming convention
-        # e.g., "agent_roomba__test_0__1234567890_train_step_1000000.pt"
         import re
-        match = re.search(r'train_step_(\d+)', checkpoint_path)
+        match = re.search(r'ts_(\d+)', checkpoint_path)
         if match:
             start_global_step = int(match.group(1))
             print(f"Resuming from global step: {start_global_step}")
@@ -147,10 +145,8 @@ def train(
     reward_rms = RunningMeanStd()
     
     with tqdm.tqdm(total=total_timesteps, desc="Training") as pbar:
-        # Calculate which iteration to start from
-        start_iteration = (start_global_step // batch_size) + 1
         
-        for iteration in range(start_iteration, n_iterations + 1):
+        for iteration in range(0, n_iterations + 1):
             if anneal_lr:
                 frac = (
                     1.0 - (iteration - 1.0) / n_iterations
@@ -391,7 +387,7 @@ def train(
     os.makedirs(checkpoint_dir, exist_ok=True)
     torch.save(
         agent,
-        os.path.join(checkpoint_dir, run_name + f"_ts_final.pt"),
+        os.path.join(checkpoint_dir, run_name + f"_ts_{global_step}.pt"),
     )
 
 
