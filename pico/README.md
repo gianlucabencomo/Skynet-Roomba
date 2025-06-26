@@ -22,7 +22,7 @@ This folder contains firmware and configuration code for the microcontroller (e.
 
 ## Integration
 
-- The Pico code is designed to work seamlessly with the server scripts in the `server/` directory.
+- The Pico code is designed to work seamlessly with the server scripts in the `server/` directory. Every pico can be flashed with this code without modification to `main.py`.
 - Make sure network addresses and ports match between the Pico and server configurations.
 
 ---
