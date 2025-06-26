@@ -8,3 +8,4 @@ docs/.DS_Store
 .DS_Store
 *.egg*
 __pycache__
+roomba/server/debug.py
