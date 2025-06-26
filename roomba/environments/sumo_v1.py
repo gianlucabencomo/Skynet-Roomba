@@ -56,10 +56,10 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         contact_rew_weight: float = 1e-1,  # rew function is win/lose + exploratory that maximizes contact
         symmetry_rew_weight: float = 1e-2,
         dist_center_weight: float = 1e-2,
-        uwb_sensor_noise: float = 0.03,  # for sim2real
+        uwb_sensor_noise: float = 0.01,  # for sim2real
         deadband: float = 0.1,  # if ctrl < 0.1 then set ctrl = 0
         action_alpha: float = 0.4,  # EMA for actions
-        obs_alpha: float = 0.8,  # EMA for obs to replicate UWB filter
+        obs_alpha: float = 0.6,  # EMA for obs to replicate UWB filter
         train: bool = True,  # randomly rotate + translate roombas if *not in eval mode
         mode: str = "uwb",
         **kwargs,
@@ -210,8 +210,6 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
                 + (1 - self._obs_alpha) * self._commodus_filtered
             )
 
-            # maximus_xy_vel = self.data.qvel[0:2] #(self._maximus_filtered - maximus_old) / self.dt
-            # commodus_xy_vel = self.data.qvel[8:10] #(self._commodus_filtered - commodus_old) / self.dt
             maximus_xy_vel = (self._maximus_filtered - maximus_old) / self.dt
             commodus_xy_vel = (self._commodus_filtered - commodus_old) / self.dt
 
