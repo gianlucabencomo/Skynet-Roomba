@@ -20,7 +20,6 @@ Welcome to the repository for Ludus Labs' **AI Roomba Fight Hackathon**! This re
 
 **Prerequisites:**
 - Python 3.12
-- [MuJoCo](https://mujoco.org/) (see their docs for license and install)
 
 **Install dependencies:**
 ```bash
