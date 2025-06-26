@@ -14,13 +14,13 @@ import torch.optim as optim
 import supersuit as ss
 from supersuit import pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1
 
-from environments.sumo_v1 import Sumo
+from roomba.environments.sumo_v1 import Sumo
 
-from models.mlp import MlpContinuousActorCritic
-from models.base import ZeroActionAgent, RandomActionAgent
-from utils import get_device, RunningMeanStd, clone_policy, set_random_seeds
-from environments.wrappers import FrameStackWrapper
-from evaluate import evaluate_self_play
+from roomba.models.mlp import MlpContinuousActorCritic
+from roomba.models.base import ZeroActionAgent, RandomActionAgent
+from roomba.utils import get_device, RunningMeanStd, clone_policy, set_random_seeds
+from roomba.environments.wrappers import FrameStackWrapper
+from roomba.evaluate import evaluate_self_play
 
 from torch.utils.tensorboard import SummaryWriter
 
