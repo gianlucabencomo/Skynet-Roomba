@@ -24,6 +24,7 @@ def load_checkpoint(
     device: str = "cpu",
 ):  
     agent = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    agent.eval()
     return agent
 
 def build_obs(max_s: State, max_torque: np.array, com_s: State, com_torque: np.array) -> dict:
