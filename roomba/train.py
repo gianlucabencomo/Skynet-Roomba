@@ -46,7 +46,7 @@ def train(
     checkpoint_dir: str = "checkpoints",
     save_freq: int = 20,  # after how many updates to save checkpoints / add to buffer
     ckpt_path: Optional[str] = None,  # for continuing training
-    uwb_sensor_noise: float = 0.01,
+    uwb_sensor_noise: float = 0.1,
     action_alpha: float = 0.4,
     obs_alpha: float = 0.8,
     run_name: str = None,
@@ -87,7 +87,7 @@ def train(
 
     # -- frame stacking --
     if frame_stack > 1:
-        env = FrameStackWrapper(env, k=frame_stack)
+        env = FrameStackWrapper(env, k=[frame_stack, frame_stack])
 
     if domain_randomize:
         env = DomainRandomizationWrapper(env)
@@ -359,7 +359,7 @@ def train(
                 uwb_sensor_noise=uwb_sensor_noise, action_alpha=action_alpha, obs_alpha=obs_alpha
             )
             if frame_stack > 1:
-                eval_env = FrameStackWrapper(eval_env, k=frame_stack)
+                eval_env = FrameStackWrapper(eval_env, k=[frame_stack, frame_stack])
             # -- test against zero agent --
             reward, length = evaluate_self_play(
                 eval_env, agent, ZeroActionAgent(envs), device

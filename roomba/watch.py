@@ -94,7 +94,7 @@ def main(
     print(f"Framestack size: {frame_stack}")
         
     if frame_stack > 1:
-        env = FrameStackWrapper(env, k=frame_stack)
+        env = FrameStackWrapper(env, k=[frame_stack, frame_stack])
 
     if ckpt2 is None:
         agent2 = deepcopy(agent1)
