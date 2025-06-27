@@ -68,10 +68,10 @@
     </worldbody>
 
     <actuator>
-        <motor name="lwheel1" joint="lwheel1" gear="3"/>
-        <motor name="rwheel1" joint="rwheel1" gear="3"/>
-        <motor name="lwheel2" joint="lwheel2" gear="3"/>
-        <motor name="rwheel2" joint="rwheel2" gear="3"/>
+        <motor name="lwheel1" joint="lwheel1" gear="3.2"/>
+        <motor name="rwheel1" joint="rwheel1" gear="3.2"/>
+        <motor name="lwheel2" joint="lwheel2" gear="3.2"/>
+        <motor name="rwheel2" joint="rwheel2" gear="3.2"/>
     </actuator>
 
     <sensor>
