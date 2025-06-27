@@ -25,7 +25,7 @@ from torch.utils.tensorboard import SummaryWriter
 def train(
     seed: int = 0,
     env_mode: str = "uwb",
-    total_timesteps: int = 50_000_000, # this sets the maximum number of timesteps
+    total_timesteps: int = 100_000_000,
     n_envs: int = 512,  # n parallel environments
     n_steps: int = 512,  # steps per rollout per environment
     n_mbs: int = 64,  # n mini-batches per epoch (determines batch size)
@@ -45,7 +45,7 @@ def train(
     past_agent_buffer_size: int = 50,  # maximum number of previous agents to play against in asynchronous self-play
     checkpoint_dir: str = "checkpoints",
     save_freq: int = 20,  # after how many updates to save checkpoints / add to buffer
-    checkpoint_path: Optional[str] = None,  # for continuing training
+    ckpt_path: Optional[str] = None,  # for continuing training
     uwb_sensor_noise: float = 0.01,
     action_alpha: float = 0.4,
     obs_alpha: float = 0.6,
@@ -109,13 +109,13 @@ def train(
     
     # -- load checkpoint for continuing training if provided -- 
     start_global_step = 0
-    if checkpoint_path is not None:
-        print(f"Loading checkpoint from {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
-        agent.load_state_dict(checkpoint)
+    if ckpt_path is not None:
+        print(f"Loading checkpoint from {ckpt_path}")
+        agent = torch.load(ckpt_path, map_location=device, weights_only=False)
         
+        # Extract global step from checkpoint filename if following the naming convention
         import re
-        match = re.search(r'train_step_(\d+)', checkpoint_path)
+        match = re.search(r'ts_(\d+)', ckpt_path)
         if match:
             start_global_step = int(match.group(1))
             print(f"Resuming from global step: {start_global_step}")
@@ -143,10 +143,8 @@ def train(
     reward_rms = RunningMeanStd()
     
     with tqdm.tqdm(total=total_timesteps, desc="Training") as pbar:
-        # Calculate which iteration to start from
-        start_iteration = (start_global_step // batch_size) + 1
         
-        for iteration in range(start_iteration, n_iterations + 1):
+        for iteration in range(0, n_iterations + 1):
             if anneal_lr:
                 frac = (
                     1.0 - (iteration - 1.0) / n_iterations
@@ -340,8 +338,8 @@ def train(
             if iteration % save_freq == 0:
                 os.makedirs(checkpoint_dir, exist_ok=True)
                 checkpoint_name = run_name + f"_ts_{global_step}.pt"
-                checkpoint_path = os.path.join(checkpoint_dir, checkpoint_name)
-                torch.save(agent, checkpoint_path)
+                ckpt_path = os.path.join(checkpoint_dir, checkpoint_name)
+                torch.save(agent, ckpt_path)
                 # -- add to buffer --
                 past_agents.append(clone_policy(agent))
 
@@ -361,8 +359,18 @@ def train(
             )
 
             # -- logging --
-            writer.add_scalar("results/episode_reward", reward, global_step)
-            writer.add_scalar("results/episode_length", length, global_step)
+            writer.add_scalar("results/episode_reward_v_static_agent", reward, global_step)
+            writer.add_scalar("results/episode_length_v_static_agent", length, global_step)
+
+            # -- test against most two agents ago --
+            reward, length = evaluate_self_play(
+                eval_env, agent, past_agents[-2], device
+            )
+
+            # -- logging --
+            writer.add_scalar("results/episode_reward_v_past_agent", reward, global_step)
+            writer.add_scalar("results/episode_length_v_past_agent", length, global_step)
+
             writer.add_scalar("losses/entropy", np.mean(entropies), global_step)
             writer.add_scalar("losses/critic_loss", critic_loss.item(), global_step)
             writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
@@ -377,7 +385,7 @@ def train(
     os.makedirs(checkpoint_dir, exist_ok=True)
     torch.save(
         agent,
-        os.path.join(checkpoint_dir, run_name + f"_ts_final.pt"),
+        os.path.join(checkpoint_dir, run_name + f"_ts_{global_step}.pt"),
     )
 
 

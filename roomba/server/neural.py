@@ -1,7 +1,7 @@
 import argparse, socket, time, threading
 import pygame, torch, numpy as np
 
-from helper import encode_wheels, clamp, load_checkpoint, build_obs
+from helper import encode_wheels, clamp, load_checkpoint, build_obs, get_framestack_size
 from constants import *
 from state_buffer import StateBuffer, State, reader
 from collections import deque
@@ -10,17 +10,20 @@ MAXIMUS_TAG = "5620"
 COMMODUS_TAG = "4F2A"
 POLICY_MAX_PATH = "./test_ckpt.pt"
 POLICY_COM_PATH = "./test_ckpt.pt"
-MAX_ALPHA = 0.2
-COM_ALPHA = 0.2
-MAX_FRAME_STACK = 10
-COM_FRAME_STACK = 10
-
+MAX_ALPHA = 0.4
+COM_ALPHA = 0.4
 policy_max = load_checkpoint(
     POLICY_MAX_PATH, device="cpu"
 ).eval()
 policy_com = load_checkpoint(
     POLICY_COM_PATH, device="cpu"
 ).eval()
+
+MAX_FRAME_STACK = get_framestack_size(policy_max)
+COM_FRAME_STACK = get_framestack_size(policy_com)
+
+print(f"Maximus frame stack: {MAX_FRAME_STACK}")
+print(f"Commodus frame stack: {COM_FRAME_STACK}")
 
 last_torque_max = np.zeros(2, dtype=np.float32)
 last_torque_com = np.zeros(2, dtype=np.float32)
@@ -70,6 +73,9 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
             if neural_mode:
                 max_s = buf.get(MAXIMUS_TAG)
                 com_s = buf.get(COMMODUS_TAG)
+                
+                print(f"Maximus tag: {MAXIMUS_TAG} | {max_s}")
+                print(f"Commodus tag: {COMMODUS_TAG} | {com_s}")
 
                 if (max_s is not None) and (com_s is not None):
                     obs = build_obs(max_s, last_torque_max, com_s, last_torque_com)
@@ -106,8 +112,8 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
                     # map to PWM
                     max_left = int(100 * clamp(torque_max[0]))
                     max_right = int(100 * clamp(torque_max[1]))
-                    com_left = 0#int(100 * clamp(torque_com[0]))
-                    com_right = 0#int(100 * clamp(torque_com[1]))
+                    com_left = int(100 * clamp(torque_com[0]))
+                    com_right = int(100 * clamp(torque_com[1]))
                 else:
                     # no fresh UWB → stop both
                     max_left = max_right = com_left = com_right = 0
