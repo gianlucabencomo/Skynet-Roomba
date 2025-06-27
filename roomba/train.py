@@ -26,7 +26,7 @@ def train(
     seed: int = 0,
     env_mode: str = "uwb",
     total_timesteps: int = 100_000_000,
-    n_envs: int = 512,  # n parallel environments
+    n_envs: int = 1024,  # n parallel environments
     n_steps: int = 512,  # steps per rollout per environment
     n_mbs: int = 64,  # n mini-batches per epoch (determines batch size)
     epochs_per_update: int = 5,  # n epochs per rollout
