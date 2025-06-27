@@ -56,7 +56,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         contact_rew_weight: float = 1e-1,  # rew function is win/lose + exploratory that maximizes contact
         symmetry_rew_weight: float = 1e-2,
         dist_center_weight: float = 1e-2,
-        uwb_sensor_noise: float = 0.01,  # for sim2real
+        uwb_sensor_noise: float = 0.2,  # for sim2real
         deadband: float = 0.1,  # if ctrl < 0.1 then set ctrl = 0
         action_alpha: float = 0.4,  # EMA for actions
         obs_alpha: float = 0.6,  # EMA for obs to replicate UWB filter
@@ -124,8 +124,8 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self._maximus_filtered = np.zeros(2)
         self._commodus_filtered = np.zeros(2)
 
-        self._maximus_vel_history = deque(maxlen=5)
-        self._commodus_vel_history = deque(maxlen=5)
+        self._maximus_vel_history = deque(maxlen=1)
+        self._commodus_vel_history = deque(maxlen=1)
 
         self.setup_spaces()
 
@@ -262,6 +262,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         total_action = np.zeros(self.model.nu, dtype=np.float32)
         total_action[self.maximus_actuator_inds] = actions["maximus"]
         total_action[self.commodus_actuator_inds] = actions["commodus"]
+
         # -- apply EMA smoothing --
         total_action = (
             self._action_alpha * total_action
@@ -338,64 +339,6 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
                 reward["commodus"] += self._contact_rew_weight * np.linalg.norm(
                     commodus_contact
                 )
-            # if self._symmetry_rew_weight > 0.0:
-            #     # -- symmetry reward: penalize torque difference (spinning) --
-            #     maximus_diff = abs(self.data.ctrl[0] - self.data.ctrl[1])
-            #     commodus_diff = abs(self.data.ctrl[2] - self.data.ctrl[3])
-
-            #     reward["maximus"] -= self._symmetry_rew_weight * maximus_diff
-            #     reward["commodus"] -= self._symmetry_rew_weight * commodus_diff
-            # if self._dist_center_weight > 0.0:
-            #     # -- distance from center between two opps --
-            #     qpos = self.data.qpos.flatten()
-            #     maximus_xy_pos, commodus_xy_pos = qpos[0:2], qpos[9:11]
-            #     maximus_dist = np.linalg.norm(maximus_xy_pos)
-            #     commodus_dist = np.linalg.norm(commodus_xy_pos)
-
-            #     delta = commodus_dist - maximus_dist
-            #     reward["maximus"] += self._dist_center_weight * delta
-            #     reward["commodus"] -= self._dist_center_weight * delta
-
-            # if 1:
-            #     # -- reward for velocity toward opponent (radial) --
-            #     qpos = self.data.qpos
-            #     qvel = self.data.qvel
-
-            #     maximus_pos = qpos[0:2]
-            #     commodus_pos = qpos[9:11]
-
-            #     maximus_vel = qvel[0:2]
-            #     commodus_vel = qvel[8:10]
-
-            #     rel_pos = maximus_pos - commodus_pos
-            #     rel_vel = maximus_vel - commodus_vel
-
-            #     rel_dir = rel_pos / (np.linalg.norm(rel_pos) + 1e-6)
-
-            #     radial_velocity = np.dot(rel_vel, rel_dir)
-
-            #     reward["maximus"] += 0.1 * max(0.0, radial_velocity)
-            #     reward["commodus"] += 0.1 * max(0.0, -radial_velocity)
-
-
-            # # -- exploration reward (maximize velocity towards opp) --
-            # qpos = self.data.qpos.flatten()
-            # qvel = self.data.qvel.flatten()
-            # maximus_xy_pos, maximus_xy_vel = qpos[0:2], qvel[0:2]
-            # commodus_xy_pos, commodus_xy_vel = qpos[9:11], qvel[8:10]
-            # rel_pos = maximus_xy_pos - commodus_xy_pos
-            # rel_vel = maximus_xy_vel - commodus_xy_vel
-            # # radial velocity so we don't scale with distance
-            # radial_velocity = np.dot(rel_pos, rel_vel) / (
-            #     np.linalg.norm(rel_pos) + 1e-6
-            # )
-            # reward["maximus"] += self._vel_rew_weight * max(0.0, radial_velocity)
-            # reward["commodus"] += self._vel_rew_weight * max(0.0, -radial_velocity)
-            # # -- jerk --
-            # jerk = qvel - 2 * self._qvel_tm1 + self._qvel_tm2
-            # maximus_jerk, commodus_jerk = jerk[:8], jerk[8:]
-            # reward["maximus"] -= self._jerk_cost_weight * np.linalg.norm(maximus_jerk)
-            # reward["commodus"] -= self._jerk_cost_weight * np.linalg.norm(commodus_jerk)
 
         return reward, terminations, truncations
 

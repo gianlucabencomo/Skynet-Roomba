@@ -16,7 +16,7 @@ from roomba.environments.sumo_v1 import Sumo
 from roomba.models.mlp import MlpContinuousActorCritic
 from roomba.models.base import ZeroActionAgent, RandomActionAgent
 from roomba.utils import get_device, RunningMeanStd, clone_policy, set_random_seeds
-from roomba.environments.wrappers import FrameStackWrapper
+from roomba.environments.wrappers import FrameStackWrapper, DomainRandomizationWrapper
 from roomba.evaluate import evaluate_self_play
 
 from torch.utils.tensorboard import SummaryWriter
@@ -48,13 +48,17 @@ def train(
     ckpt_path: Optional[str] = None,  # for continuing training
     uwb_sensor_noise: float = 0.01,
     action_alpha: float = 0.4,
-    obs_alpha: float = 0.6,
+    obs_alpha: float = 0.8,
     run_name: str = None,
+    domain_randomize: bool = False
 ):
     """PPO asynchronous self-play with MLP for Sumo. Heavily referenced https://github.com/vwxyzjn/cleanrl."""
     # -- create unique run name ---
     if run_name is None: 
-        run_name = f"s{seed}_fs{frame_stack}_ns{n_steps}_uwb{uwb_sensor_noise:.2f}".replace('.', '_')
+        if domain_randomize:
+            run_name = f"s{seed}_fs{frame_stack}_ns{n_steps}_dr".replace('.', '_')
+        else:
+            run_name = f"s{seed}_fs{frame_stack}_ns{n_steps}_uwb{uwb_sensor_noise:.2f}".replace('.', '_')
 
     # -- initialize TensorBoard writer --
     writer = SummaryWriter(f"runs/{run_name}")
@@ -84,6 +88,9 @@ def train(
     # -- frame stacking --
     if frame_stack > 1:
         env = FrameStackWrapper(env, k=frame_stack)
+
+    if domain_randomize:
+        env = DomainRandomizationWrapper(env)
 
     # -- convert to vectorized format for parallel rollouts + set metadata --
     env = pettingzoo_env_to_vec_env_v1(env)
