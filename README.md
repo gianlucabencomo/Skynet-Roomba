@@ -33,11 +33,17 @@ pip install -e .
 ### 2. Train Your First Roomba Agent
 
 ```bash
-python roomba/train.py --total-timesteps 100_000_000 --n-envs 1024
+python roomba/train.py --total-timesteps 100_000_000
 ```
 - Trains a PPO agent for 100M timesteps using 1024 parallel environments.
 - Checkpoints are saved in `checkpoints/`.
 - Training logs are written to `runs/` for TensorBoard.
+
+To **continue training** from an existing checkpoint, you can simply pass another argument: 
+
+```bash
+python roomba/train.py --total-timesteps 100_000_000 --ckpt-path CKPT_PATH
+```
 
 ### 3. Monitor Training
 

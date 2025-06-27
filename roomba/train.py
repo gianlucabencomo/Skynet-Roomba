@@ -6,16 +6,13 @@ from typing import Optional
 from collections import deque
 
 import numpy as np
-import gymnasium as gym
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
-import supersuit as ss
 from supersuit import pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1
 
-from environments.sumo_v1 import Sumo
-
+from roomba.environments.sumo_v1 import Sumo
 from roomba.models.mlp import MlpContinuousActorCritic
 from roomba.models.base import ZeroActionAgent, RandomActionAgent
 from roomba.utils import get_device, RunningMeanStd, clone_policy, set_random_seeds
@@ -48,7 +45,7 @@ def train(
     past_agent_buffer_size: int = 50,  # maximum number of previous agents to play against in asynchronous self-play
     checkpoint_dir: str = "checkpoints",
     save_freq: int = 20,  # after how many updates to save checkpoints / add to buffer
-    checkpoint_path: Optional[str] = None,  # for continuing training
+    ckpt_path: Optional[str] = None,  # for continuing training
     uwb_sensor_noise: float = 0.01,
     action_alpha: float = 0.4,
     obs_alpha: float = 0.8,
@@ -57,7 +54,6 @@ def train(
 ):
     """PPO asynchronous self-play with MLP for Sumo. Heavily referenced https://github.com/vwxyzjn/cleanrl."""
     # -- create unique run name ---
-    timestamp = int(time.time())
     if run_name is None: 
         if domain_randomize:
             run_name = f"s{seed}_fs{frame_stack}_ns{n_steps}_dr".replace('.', '_')
@@ -73,6 +69,8 @@ def train(
     )
     # -- compute relevant PPO parameters --
     batch_size = n_envs * n_steps
+    if batch_size > total_timesteps:
+        print("[WARNING]: each batch (n_envs * n_steps) has more elements than total_timesteps. Adjust n_steps or n_envs to not train for more timesteps than expected.")
     n_iterations = total_timesteps // batch_size + 1
     minibatch_size = batch_size // n_mbs
     total_envs = n_envs * 2
@@ -118,15 +116,13 @@ def train(
     
     # -- load checkpoint for continuing training if provided -- 
     start_global_step = 0
-    if checkpoint_path is not None:
-        print(f"Loading checkpoint from {checkpoint_path}")
-        checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
-        agent.load_state_dict(checkpoint)
+    if ckpt_path is not None:
+        print(f"Loading checkpoint from {ckpt_path}")
+        agent = torch.load(ckpt_path, map_location=device, weights_only=False)
         
         # Extract global step from checkpoint filename if following the naming convention
-        # e.g., "agent_roomba__test_0__1234567890_train_step_1000000.pt"
         import re
-        match = re.search(r'train_step_(\d+)', checkpoint_path)
+        match = re.search(r'ts_(\d+)', ckpt_path)
         if match:
             start_global_step = int(match.group(1))
             print(f"Resuming from global step: {start_global_step}")
@@ -154,10 +150,8 @@ def train(
     reward_rms = RunningMeanStd()
     
     with tqdm.tqdm(total=total_timesteps, desc="Training") as pbar:
-        # Calculate which iteration to start from
-        start_iteration = (start_global_step // batch_size) + 1
         
-        for iteration in range(start_iteration, n_iterations + 1):
+        for iteration in range(0, n_iterations + 1):
             if anneal_lr:
                 frac = (
                     1.0 - (iteration - 1.0) / n_iterations
@@ -351,8 +345,8 @@ def train(
             if iteration % save_freq == 0:
                 os.makedirs(checkpoint_dir, exist_ok=True)
                 checkpoint_name = run_name + f"_ts_{global_step}.pt"
-                checkpoint_path = os.path.join(checkpoint_dir, checkpoint_name)
-                torch.save(agent, checkpoint_path)
+                ckpt_path = os.path.join(checkpoint_dir, checkpoint_name)
+                torch.save(agent, ckpt_path)
                 # -- add to buffer --
                 past_agents.append(clone_policy(agent))
 
@@ -372,8 +366,8 @@ def train(
             )
 
             # -- logging --
-            writer.add_scalar("results/episode_reward_0", reward, global_step)
-            writer.add_scalar("results/episode_length_0", length, global_step)
+            writer.add_scalar("results/episode_reward_v_static_agent", reward, global_step)
+            writer.add_scalar("results/episode_length_v_static_agent", length, global_step)
 
             # -- test against most two agents ago --
             reward, length = evaluate_self_play(
@@ -381,8 +375,8 @@ def train(
             )
 
             # -- logging --
-            writer.add_scalar("results/episode_reward_2", reward, global_step)
-            writer.add_scalar("results/episode_length_2", length, global_step)
+            writer.add_scalar("results/episode_reward_v_past_agent", reward, global_step)
+            writer.add_scalar("results/episode_length_v_past_agent", length, global_step)
 
             writer.add_scalar("losses/entropy", np.mean(entropies), global_step)
             writer.add_scalar("losses/critic_loss", critic_loss.item(), global_step)
@@ -398,7 +392,7 @@ def train(
     os.makedirs(checkpoint_dir, exist_ok=True)
     torch.save(
         agent,
-        os.path.join(checkpoint_dir, run_name + f"_ts_final.pt"),
+        os.path.join(checkpoint_dir, run_name + f"_ts_{global_step}.pt"),
     )
 
 

@@ -4,17 +4,18 @@ from copy import deepcopy
 
 from roomba.environments.sumo_v1 import Sumo
 from roomba.environments.wrappers import FrameStackWrapper
-from roomba.models.mlp import MlpContinuousActorCritic
 from roomba.utils import get_device
-
+from roomba.server.helper import get_framestack_size, load_checkpoint
 
 
 def load_checkpoint(
     checkpoint_path: str,
     device: str = "cpu",
+    set_eval: bool = True 
 ):  
     agent = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    agent.eval()
+    if set_eval:
+        agent.eval()
     return agent
 
 
@@ -81,20 +82,20 @@ def main(
     ckpt1: str,
     ckpt2: str = None,
     episodes: int = 5,
-    frame_stack: int = 1,
     env_mode: str = "uwb",
 ):
     device = get_device()
     env = Sumo(mode=env_mode, train=False, render_mode="human")
+    
+    agent1 = load_checkpoint(ckpt1)
+    
+    # determine framestack size
+    frame_stack = get_framestack_size(agent1, env)
+    print(f"Framestack size: {frame_stack}")
+        
     if frame_stack > 1:
         env = FrameStackWrapper(env, k=frame_stack)
 
-    obs_dim = env.observation_spaces["maximus"].shape[
-        0
-    ]  # Use actual shape from environment
-    action_dim = env.action_spaces["maximus"].shape[0]
-
-    agent1 = load_checkpoint(ckpt1)
     if ckpt2 is None:
         agent2 = deepcopy(agent1)
     else:
