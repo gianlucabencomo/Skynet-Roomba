@@ -16,6 +16,7 @@ class LSTMContinuousActorCritic(nn.Module):
         normalize_obs: bool = True,
     ):
         super().__init__()
+        self.input_dim = obs_dim
         self.normalize = NormalizeAndClip(obs_dim) if normalize_obs else nn.Identity()
 
         self.shared = lstm_init(
@@ -74,3 +75,9 @@ class LSTMContinuousActorCritic(nn.Module):
         value = self.critic(hidden)
 
         return action, log_prob, entropy, value, state
+
+    def actor_params(self):
+        return list(self.actor_mean.parameters()) + [self.actor_logstd]
+
+    def critic_params(self):
+        return list(self.critic.parameters())
