@@ -26,7 +26,7 @@
                 <geom type="cylinder" size="0.03 0.02" material="roomba1_decal_color" contype="0" conaffinity="0"/>
             </body>
         </body>
-        <body name="roomba2" pos="0 -0.5 0.2" quat="0 0 0 1">
+        <body name="roomba2" pos="0 -0.5 0.098" quat="0 0 0 1">
             <freejoint name="root2"/>
             <geom name="roomba2" type="cylinder" size="0.1625 0.035" pos="0 0 0" material="roomba2_color"/>
             <body name="lwheel2" pos="0.12 0.005 -0.005">
