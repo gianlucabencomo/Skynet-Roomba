@@ -5,14 +5,14 @@
         <geom name="floor" type="mesh" mesh="oct_floor" pos="0 0 0" quat="0.7071 0.7071 0 0" material="floor_color" friction="2.0 0.02 0.001"/>        
         <light name="light" pos="0 0 7" dir="0 0 -1" mode="fixed"/>
         <camera name="side" pos="-4 0 2" xyaxes="0 -1 0 1 0 2" mode="fixed"/>
-        <body name="roomba1" pos="0 0.5 0.2">
+        <body name="roomba1" pos="0 0.5 0.098">
             <freejoint name="root1"/>
             <geom name="roomba1" type="cylinder" size="0.1625 0.035" pos="0 0 0" material="roomba1_color"/>
-            <body name="lwheel1" pos="0.115 0.005 -0.005">
+            <body name="lwheel1" pos="0.12 0.005 -0.005">
                 <joint name="lwheel1" type="hinge" axis="1 0 0"/>
                 <geom type="cylinder" size="0.04 0.015" quat="0 0.7071 0 0.7071" friction="2.0 0.02 0.001"/>
             </body>
-            <body name="rwheel1" pos="-0.115 0.005 -0.005">
+            <body name="rwheel1" pos="-0.12 0.005 -0.005">
                 <joint name="rwheel1" type="hinge" axis="1 0 0"/>
                 <geom type="cylinder" size="0.04 0.015" quat="0 0.7071 0 0.7071" friction="2.0 0.02 0.001"/>
             </body>
@@ -29,11 +29,11 @@
         <body name="roomba2" pos="0 -0.5 0.2" quat="0 0 0 1">
             <freejoint name="root2"/>
             <geom name="roomba2" type="cylinder" size="0.1625 0.035" pos="0 0 0" material="roomba2_color"/>
-            <body name="lwheel2" pos="0.115 0.005 -0.005">
+            <body name="lwheel2" pos="0.12 0.005 -0.005">
                 <joint name="lwheel2" type="hinge" axis="1 0 0"/>
                 <geom type="cylinder" size="0.04 0.015" quat="0 0.7071 0 0.7071"  friction="2.0 0.02 0.001"/>
             </body>
-            <body name="rwheel2" pos="-0.115 0.005 -0.005">
+            <body name="rwheel2" pos="-0.12 0.005 -0.005">
                 <joint name="rwheel2" type="hinge" axis="1 0 0"/>
                 <geom type="cylinder" size="0.04 0.015" quat="0 0.7071 0 0.7071"  friction="2.0 0.02 0.001"/>
             </body>
@@ -50,9 +50,9 @@
     </worldbody>
 
     <actuator>
-        <motor name="lwheel1" joint="lwheel1" gear="3.2"/>
-        <motor name="rwheel1" joint="rwheel1" gear="3.2"/>
-        <motor name="lwheel2" joint="lwheel2" gear="3.2"/>
-        <motor name="rwheel2" joint="rwheel2" gear="3.2"/>
+        <motor name="lwheel1" joint="lwheel1" gear="4"/>
+        <motor name="rwheel1" joint="rwheel1" gear="4"/>
+        <motor name="lwheel2" joint="lwheel2" gear="4"/>
+        <motor name="rwheel2" joint="rwheel2" gear="4"/>
     </actuator>
 </mujoco>
