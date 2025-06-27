@@ -6,16 +6,13 @@ from typing import Optional
 from collections import deque
 
 import numpy as np
-import gymnasium as gym
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
-import supersuit as ss
 from supersuit import pettingzoo_env_to_vec_env_v1, concat_vec_envs_v1
 
 from roomba.environments.sumo_v1 import Sumo
-
 from roomba.models.mlp import MlpContinuousActorCritic
 from roomba.models.base import ZeroActionAgent, RandomActionAgent
 from roomba.utils import get_device, RunningMeanStd, clone_policy, set_random_seeds
@@ -28,7 +25,7 @@ from torch.utils.tensorboard import SummaryWriter
 def train(
     seed: int = 0,
     env_mode: str = "uwb",
-    total_timesteps: int = 50_000_000,
+    total_timesteps: int = 50_000_000, # this sets the maximum number of timesteps
     n_envs: int = 512,  # n parallel environments
     n_steps: int = 512,  # steps per rollout per environment
     n_mbs: int = 64,  # n mini-batches per epoch (determines batch size)
@@ -56,7 +53,6 @@ def train(
 ):
     """PPO asynchronous self-play with MLP for Sumo. Heavily referenced https://github.com/vwxyzjn/cleanrl."""
     # -- create unique run name ---
-    timestamp = int(time.time())
     if run_name is None: 
         run_name = f"s{seed}_fs{frame_stack}_ns{n_steps}_uwb{uwb_sensor_noise:.2f}".replace('.', '_')
 
@@ -69,6 +65,8 @@ def train(
     )
     # -- compute relevant PPO parameters --
     batch_size = n_envs * n_steps
+    if batch_size > total_timesteps:
+        print("[WARNING]: each batch (n_envs * n_steps) has more elements than total_timesteps. Adjust n_steps or n_envs to not train for more timesteps than expected.")
     n_iterations = total_timesteps // batch_size + 1
     minibatch_size = batch_size // n_mbs
     total_envs = n_envs * 2
@@ -116,8 +114,6 @@ def train(
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
         agent.load_state_dict(checkpoint)
         
-        # Extract global step from checkpoint filename if following the naming convention
-        # e.g., "agent_roomba__test_0__1234567890_train_step_1000000.pt"
         import re
         match = re.search(r'train_step_(\d+)', checkpoint_path)
         if match:
