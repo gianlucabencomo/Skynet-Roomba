@@ -356,7 +356,9 @@ def train(
                 contact_rew_weight=0.0,
                 dist_center_weight=0.0,
                 symmetry_rew_weight=0.0,
-                uwb_sensor_noise=uwb_sensor_noise, action_alpha=action_alpha, obs_alpha=obs_alpha
+                uwb_sensor_noise=uwb_sensor_noise, 
+                action_alpha=action_alpha, 
+                obs_alpha=obs_alpha
             )
             if frame_stack > 1:
                 eval_env = FrameStackWrapper(eval_env, k=[frame_stack, frame_stack])
