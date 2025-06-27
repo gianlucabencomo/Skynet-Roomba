@@ -45,3 +45,25 @@ class FrameStackWrapper(BaseParallelWrapper):
 
     def _stack(self, agent):
         return np.concatenate(list(self._frames[agent]), axis=self.concat_axis)
+
+class DomainRandomizationWrapper(BaseParallelWrapper):
+    """Fixed Domain Randomization Wrapper for Sumo."""
+    def __init__(self, env):
+        super().__init__(env)
+        self.obs_alpha_sample = lambda _: np.random.uniform(low=0.6, high=0.95, size=())
+        self.uwb_sensor_noise_sample = lambda _: np.random.uniform(low=0.0, high=0.2, size=())
+
+    @property
+    def observation_spaces(self):
+        return self.env.observation_spaces
+
+    def observation_space(self, agent):
+        return self.env.observation_space(agent)
+
+    def reset(self, seed=None, options=None):
+        new_obs_alpha = self.obs_alpha_sample(None)
+        new_sensor_noise = self.uwb_sensor_noise_sample(None)
+        self.env._obs_alpha = new_obs_alpha
+        self.env._uwb_sensor_noise = new_sensor_noise
+
+        return self.env.reset(seed=seed, options=options)
