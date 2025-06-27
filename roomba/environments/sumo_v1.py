@@ -56,7 +56,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         contact_rew_weight: float = 1e-1,  # rew function is win/lose + exploratory that maximizes contact
         symmetry_rew_weight: float = 1e-2,
         dist_center_weight: float = 1e-2,
-        uwb_sensor_noise: float = 0.2,  # for sim2real
+        uwb_sensor_noise: float = 0.05,  # for sim2real
         deadband: float = 0.1,  # if ctrl < 0.1 then set ctrl = 0
         action_alpha: float = 0.4,  # EMA for actions
         obs_alpha: float = 0.6,  # EMA for obs to replicate UWB filter

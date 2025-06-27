@@ -78,18 +78,17 @@ def main(
     env = Sumo(mode=env_mode, train=False, render_mode="human")
     
     agent1 = load_checkpoint(ckpt1)
-    
-    # determine framestack size
-    frame_stack = get_framestack_size(agent1, env)
-    print(f"Framestack size: {frame_stack}")
-        
-    if frame_stack > 1:
-        env = FrameStackWrapper(env, k=[frame_stack, frame_stack])
+    frame_stack1 = get_framestack_size(agent1, env)        
 
     if ckpt2 is None:
+        print('Setting roomba 2 to roomba 1.')
         agent2 = deepcopy(agent1)
+        frame_stack2 = frame_stack1
     else:
         agent2 = load_checkpoint(ckpt2)
+        frame_stack2 = get_framestack_size(agent2, env)
+
+    env = FrameStackWrapper(env, k=[frame_stack1, frame_stack2])
 
     # Run visualization
     print(f"Starting visualization for {episodes} episodes...")
