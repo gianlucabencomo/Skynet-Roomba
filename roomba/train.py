@@ -46,11 +46,15 @@ def train(
     checkpoint_dir: str = "checkpoints",
     save_freq: int = 20,  # after how many updates to save checkpoints / add to buffer
     ckpt_path: Optional[str] = None,  # for continuing training
-    uwb_sensor_noise: float = 0.1,
+    uwb_sensor_noise: float = 0.05,
     action_alpha: float = 0.4,
     obs_alpha: float = 0.8,
     run_name: str = None,
-    domain_randomize: bool = False
+    domain_randomize: bool = False,
+    obs_alpha_sample_low: float = 0.6,
+    obs_alpha_sample_high: float = 0.95,
+    uwb_sensor_noise_sample_low: float = 0.0,
+    uwb_sensor_noise_sample_high: float = 0.2,
 ):
     """PPO asynchronous self-play with MLP for Sumo. Heavily referenced https://github.com/vwxyzjn/cleanrl."""
     # -- create unique run name ---
@@ -90,7 +94,11 @@ def train(
         env = FrameStackWrapper(env, k=[frame_stack, frame_stack])
 
     if domain_randomize:
-        env = DomainRandomizationWrapper(env)
+        env = DomainRandomizationWrapper(
+            env,
+            obs_alpha_sample=lambda _: np.random.uniform(low=obs_alpha_sample_low, high=obs_alpha_sample_high, size=()),
+            uwb_sensor_noise_sample=lambda _: np.random.uniform(low=uwb_sensor_noise_sample_low, high=uwb_sensor_noise_sample_high, size=())
+        )
 
     # -- convert to vectorized format for parallel rollouts + set metadata --
     env = pettingzoo_env_to_vec_env_v1(env)

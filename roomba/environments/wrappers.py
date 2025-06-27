@@ -2,7 +2,7 @@ import numpy as np
 from collections import deque
 from pettingzoo.utils.wrappers import BaseParallelWrapper
 from gymnasium.spaces import Box
-from typing import List
+from typing import List, Callable
 
 class FrameStackWrapper(BaseParallelWrapper):
     """FrameStack Wrapper for MLP network to have explicit memory."""
@@ -48,10 +48,12 @@ class FrameStackWrapper(BaseParallelWrapper):
 
 class DomainRandomizationWrapper(BaseParallelWrapper):
     """Fixed Domain Randomization Wrapper for Sumo."""
-    def __init__(self, env):
+    def __init__(self, env, 
+                 obs_alpha_sample: Callable[[None], float] = lambda _: np.random.uniform(low=0.6, high=0.95, size=()), 
+                 uwb_sensor_noise_sample: Callable[[None], float] = lambda _: np.random.uniform(low=0.0, high=0.2, size=())):
         super().__init__(env)
-        self.obs_alpha_sample = lambda _: np.random.uniform(low=0.6, high=0.8, size=())
-        self.uwb_sensor_noise_sample = lambda _: np.random.uniform(low=0.0, high=0.05, size=())
+        self.obs_alpha_sample = obs_alpha_sample
+        self.uwb_sensor_noise_sample = uwb_sensor_noise_sample
 
     @property
     def observation_spaces(self):
