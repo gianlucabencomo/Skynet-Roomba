@@ -4,9 +4,19 @@ from copy import deepcopy
 
 from roomba.environments.sumo_v1 import Sumo
 from roomba.environments.wrappers import FrameStackWrapper
-from roomba.models.mlp import MlpContinuousActorCritic
 from roomba.utils import get_device
 from roomba.server.helper import get_framestack_size, load_checkpoint
+
+
+def load_checkpoint(
+    checkpoint_path: str,
+    device: str = "cpu",
+    set_eval: bool = True 
+):  
+    agent = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    if set_eval:
+        agent.eval()
+    return agent
 
 
 def visualize_match(env, agent1, agent2, device, n_episodes=5):
