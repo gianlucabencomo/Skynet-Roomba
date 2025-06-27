@@ -50,8 +50,8 @@ class DomainRandomizationWrapper(BaseParallelWrapper):
     """Fixed Domain Randomization Wrapper for Sumo."""
     def __init__(self, env):
         super().__init__(env)
-        self.obs_alpha_sample = lambda _: np.random.uniform(low=0.6, high=0.95, size=())
-        self.uwb_sensor_noise_sample = lambda _: np.random.uniform(low=0.0, high=0.2, size=())
+        self.obs_alpha_sample = lambda _: np.random.uniform(low=0.6, high=0.8, size=())
+        self.uwb_sensor_noise_sample = lambda _: np.random.uniform(low=0.0, high=0.05, size=())
 
     @property
     def observation_spaces(self):
