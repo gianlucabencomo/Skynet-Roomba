@@ -28,13 +28,15 @@ def visualize_match(env, agent1, agent2, device, n_episodes=5):
             # Agent 1 action
             with torch.no_grad():
                 action1, _, _, _ = agent1.get_action_and_value(
-                    observations["maximus"].reshape(1, -1)
+                    observations["maximus"].reshape(1, -1),
+                    deterministic=True
                 )
 
             # Agent 2 action
             with torch.no_grad():
                 action2, _, _, _ = agent2.get_action_and_value(
-                    observations["commodus"].reshape(1, -1)
+                    observations["commodus"].reshape(1, -1),
+                    deterministic=True
                 )
 
             # Convert to numpy and dict format for environment
@@ -75,7 +77,7 @@ def main(
     env_mode: str = "uwb",
 ):
     device = get_device()
-    env = Sumo(mode=env_mode, train=False, render_mode="human")
+    env = Sumo(mode=env_mode, train=False, render_mode="human", uwb_sensor_noise=0.15)
     
     agent1 = load_checkpoint(ckpt1)
 

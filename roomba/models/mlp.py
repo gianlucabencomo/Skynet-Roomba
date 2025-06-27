@@ -39,8 +39,8 @@ class MlpContinuousActorCritic(nn.Module):
         self,
         obs_dim: int,
         action_dim: int,
-        actor_hidden_widths: List[int] = HIDDEN_WIDTHS[6],
-        critic_hidden_widths: List[int] = HIDDEN_WIDTHS[6],
+        actor_hidden_widths: List[int] = [256, 256, 256],
+        critic_hidden_widths: List[int] = [256, 256, 256],
         normalize_obs: bool = True,
     ):
         super().__init__()
@@ -91,7 +91,7 @@ class MlpContinuousActorCritic(nn.Module):
         x = self.normalize(x)
         return self.critic(x)
 
-    def get_action_and_value(self, x, action=None):
+    def get_action_and_value(self, x, action=None, deterministic=False):
         x = self.normalize(x)
 
         action_mean = self.actor_mean(x)
@@ -100,7 +100,10 @@ class MlpContinuousActorCritic(nn.Module):
         dist = Normal(action_mean, action_std)
 
         if action is None:
-            raw_action = dist.rsample()  # Reparameterized sample
+            if deterministic:
+                raw_action = action_mean
+            else:
+                raw_action = dist.rsample()  # Reparameterized sample
             action = torch.tanh(raw_action)
 
             # Log prob with correction for tanh squashing
