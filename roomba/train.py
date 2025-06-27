@@ -60,7 +60,7 @@ def train(
     # -- create unique run name ---
     if run_name is None: 
         if domain_randomize:
-            run_name = f"s{seed}_fs{frame_stack}_ns{n_steps}_dr".replace('.', '_')
+            run_name = f"s{seed}_fs{frame_stack}_ns{n_steps}_dr_obs_alpha_{obs_alpha_sample_low:.2f}_{obs_alpha_sample_high:.2f}_uwb{uwb_sensor_noise_sample_low:.2f}_{uwb_sensor_noise_sample_high:.2f}".replace('.', '_')
         else:
             run_name = f"s{seed}_fs{frame_stack}_ns{n_steps}_uwb{uwb_sensor_noise:.2f}".replace('.', '_')
 
