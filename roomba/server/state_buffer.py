@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, Tuple
 import numpy as np
 
-from .constants import SERIAL_PORT, BAUD
+from roomba.server.constants import SERIAL_PORT, BAUD
 
 
 @dataclass

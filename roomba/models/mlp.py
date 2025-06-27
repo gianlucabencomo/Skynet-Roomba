@@ -7,8 +7,6 @@ from typing import List
 
 from .helper import *
 
-from collections import deque
-
 HIDDEN_WIDTHS = [
     # 2-layer MLPs
     [64, 64],
