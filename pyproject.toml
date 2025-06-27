@@ -30,3 +30,4 @@ include = ["roomba*"]  # ensures automatic discovery
 [tool.setuptools.package-data]
 "roomba.environments.roomba" = ["*.xml"]
 "roomba.environments.roomba.common" = ["*.xml", "*.stl"]
+"roomba.example" = ["*.pt"]
