@@ -9,7 +9,7 @@ from roomba.server.helper import get_framestack_size, load_checkpoint
 
 
 
-def visualize_match(env, agent1, agent2, device, n_episodes=5):
+def visualize_match(env, agent1, agent2, device, n_episodes=5, deterministic: bool = False):
     for episode in range(n_episodes):
         print(f"Episode {episode+1}/{n_episodes}")
         observations = env.reset()[0]  # PettingZoo environments return (obs, info)
@@ -29,14 +29,14 @@ def visualize_match(env, agent1, agent2, device, n_episodes=5):
             with torch.no_grad():
                 action1, _, _, _ = agent1.get_action_and_value(
                     observations["maximus"].reshape(1, -1),
-                    deterministic=True
+                    deterministic=deterministic
                 )
 
             # Agent 2 action
             with torch.no_grad():
                 action2, _, _, _ = agent2.get_action_and_value(
                     observations["commodus"].reshape(1, -1),
-                    deterministic=True
+                    deterministic=deterministic
                 )
 
             # Convert to numpy and dict format for environment
@@ -75,6 +75,7 @@ def main(
     ckpt2: str = None,
     episodes: int = 5,
     env_mode: str = "uwb",
+    deterministic: bool = False,
 ):
     device = get_device()
     env = Sumo(mode=env_mode, train=False, render_mode="human")
@@ -95,7 +96,7 @@ def main(
 
     # Run visualization
     print(f"Starting visualization for {episodes} episodes...")
-    visualize_match(env, agent1, agent2, device, n_episodes=episodes)
+    visualize_match(env, agent1, agent2, device, n_episodes=episodes, deterministic=deterministic)
 
 
 if __name__ == "__main__":
