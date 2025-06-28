@@ -54,7 +54,7 @@ def run_joystick(pico_ip1: str, pico_ip2: str, render: bool = False):
     obs_com = deque(maxlen=COM_FRAME_STACK)
 
     try:
-        
+        # ---- interactive mujoco render init if enabled ------------------------------------------------------
         if render:
             import mujoco
             import mujoco_viewer
@@ -184,7 +184,7 @@ def run_joystick(pico_ip1: str, pico_ip2: str, render: bool = False):
                         mj_data.ctrl = [cl_pwm/100, cr_pwm/100, l_pwm/100, r_pwm/100]
             
             if render:
-                for _ in range(50):
+                for _ in range(50): # frame skip of 50
                     mujoco.mj_step(mj_model, mj_data)
                 
                 if viewer.is_alive:
