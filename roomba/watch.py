@@ -77,7 +77,7 @@ def main(
     env_mode: str = "uwb",
 ):
     device = get_device()
-    env = Sumo(mode=env_mode, train=False, render_mode="human", uwb_sensor_noise=0.15)
+    env = Sumo(mode=env_mode, train=False, render_mode="human")
     
     agent1 = load_checkpoint(ckpt1)
 
