@@ -121,11 +121,10 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self._action_alpha = action_alpha
         self._obs_alpha = obs_alpha
 
-        self._maximus_filtered = np.zeros(2)
-        self._commodus_filtered = np.zeros(2)
-
-        self._maximus_vel_history = deque(maxlen=1)
-        self._commodus_vel_history = deque(maxlen=1)
+        self._maximus_pos_history = deque(maxlen=7)
+        self._commodus_pos_history = deque(maxlen=7)
+        self._maximus_vel_history = deque(maxlen=7)
+        self._commodus_vel_history = deque(maxlen=7)
 
         self.setup_spaces()
 
@@ -196,22 +195,14 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
                     loc=0.0, scale=self._uwb_sensor_noise, size=(2,)
                 )
 
-            # -- EMA obs --
-            maximus_old, commodus_old = (
-                self._maximus_filtered.copy(),
-                self._commodus_filtered.copy(),
-            )
-            self._maximus_filtered = (
-                self._obs_alpha * maximus_xy_pos
-                + (1 - self._obs_alpha) * self._maximus_filtered
-            )
-            self._commodus_filtered = (
-                self._obs_alpha * commodus_xy_pos
-                + (1 - self._obs_alpha) * self._commodus_filtered
-            )
+            self._maximus_pos_history.append(maximus_xy_pos)
+            self._commodus_pos_history.append(commodus_xy_pos)
+            maximus_xy_pos = np.mean(self._maximus_pos_history, axis=0)
+            commodus_xy_pos = np.mean(self._maximus_pos_history, axis=0)
 
-            maximus_xy_vel = (self._maximus_filtered - maximus_old) / self.dt
-            commodus_xy_vel = (self._commodus_filtered - commodus_old) / self.dt
+
+            maximus_xy_vel = (self._maximus_pos_history[-1] - self._maximus_pos_history[-2]) / self.dt
+            commodus_xy_vel = (self._commodus_pos_history[-1] - self._commodus_pos_history[-2]) / self.dt
 
             self._maximus_vel_history.append(maximus_xy_vel)
             self._commodus_vel_history.append(commodus_xy_vel)
@@ -374,6 +365,8 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self._qvel_tm2 = self._qvel_tm1.copy()
         self._maximus_filtered = self.data.qpos[0:2].copy()
         self._commodus_filtered = self.data.qpos[9:11].copy()
+        self._maximus_pos_history.clear()
+        self._commodus_pos_history.clear()
         self._maximus_vel_history.clear()
         self._commodus_vel_history.clear()
         observation = self._get_obs()
