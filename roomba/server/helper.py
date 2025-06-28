@@ -7,9 +7,9 @@ from roomba.environments.sumo_v1 import Sumo
 
 
 def encode_wheels(x, y):
-    sign1 = "-" if x < 0 else "+"
+    sign1 = "-" if x > 0 else "+"
     x = str(abs(x)).zfill(3)
-    sign2 = "-" if y < 0 else "+"
+    sign2 = "-" if y > 0 else "+"
     y = str(abs(y)).zfill(3)
     return f"{x}{sign1}{y}{sign2}"
 

@@ -29,7 +29,7 @@ last_torque_max = np.zeros(2, dtype=np.float32)
 last_torque_com = np.zeros(2, dtype=np.float32)
 
 
-def run_joystick(pico_ip1: str, pico_ip2: str):
+def run_joystick(pico_ip1: str, pico_ip2: str, render: bool = False):
     # ---- UDP + joystick init -------------------------------------------------
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((HOST, PORT))
@@ -54,11 +54,37 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
     obs_com = deque(maxlen=COM_FRAME_STACK)
 
     try:
+        
+        if render:
+            import mujoco
+            import mujoco_viewer
+
+            mj_model = mujoco.MjModel.from_xml_path('/Users/benediktstroebl/Documents/GitHub/roomba/roomba/environments/roomba/uwb_v1.xml')
+            mj_data = mujoco.MjData(mj_model)
+            
+            max_s = buf.get(MAXIMUS_TAG)
+            com_s = buf.get(COMMODUS_TAG)
+            while max_s is None or com_s is None:
+                max_s = buf.get(MAXIMUS_TAG)
+                com_s = buf.get(COMMODUS_TAG)
+                time.sleep(0.1)
+            
+                print(f"Maximus tag: {MAXIMUS_TAG} | {max_s}")
+                print(f"Commodus tag: {COMMODUS_TAG} | {com_s}")
+            
+            mj_data.qpos[0] = max_s.x
+            mj_data.qpos[1] = max_s.y
+            mj_data.qpos[9] = com_s.x
+            mj_data.qpos[10] = com_s.y
+            
+            viewer = mujoco_viewer.MujocoViewer(mj_model, mj_data)
+            viewer._render_every_frame = True
+        
         while running:
             # ---------- pygame events ----------------------------------------
             for event in pygame.event.get():
                 if event.type == pygame.JOYAXISMOTION:
-                    analog[event.axis] = event.value
+                    analog[event.axis] = -event.value
                 elif event.type == pygame.JOYBUTTONDOWN:
                     if event.button == PS4_KEYS["x"]:
                         neural_mode = not neural_mode
@@ -94,8 +120,8 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
 
 
                     with torch.no_grad():
-                        torque_com, *_ = policy_com.get_action_and_value(com_obs_tensor)
-                        torque_max, *_ = policy_max.get_action_and_value(max_obs_tensor)
+                        torque_com, *_ = policy_com.get_action_and_value(com_obs_tensor, deterministic=True)
+                        torque_max, *_ = policy_max.get_action_and_value(max_obs_tensor, deterministic=True)
                         torque_com = torque_com.squeeze().cpu().numpy()
                         torque_max = torque_max.squeeze().cpu().numpy()
 
@@ -114,6 +140,7 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
                     max_right = int(100 * clamp(torque_max[1]))
                     com_left = int(100 * clamp(torque_com[0]))
                     com_right = int(100 * clamp(torque_com[1]))
+                    
                 else:
                     # no fresh UWB → stop both
                     max_left = max_right = com_left = com_right = 0
@@ -143,11 +170,25 @@ def run_joystick(pico_ip1: str, pico_ip2: str):
                 print(
                     f"NN → {pico_ip1}: {l_pwm:+3d}/{r_pwm:+3d}   {pico_ip2}: {cl_pwm:+3d}/{cr_pwm:+3d}"
                 )
+                if render:
+                    mj_data.ctrl = [max_left/100, max_right/100, com_left/100, com_right/100]
             else:
                 # manual → only active pico
                 cmd = encode_wheels(r_pwm, l_pwm)
                 sock.sendto(cmd.encode(), (active_pico, PORT))
                 print(f"MAN → {active_pico}: {cmd}")
+                if render:
+                    if active_pico == pico_ip1:
+                        mj_data.ctrl = [l_pwm/100, r_pwm/100, cl_pwm/100, cr_pwm/100]
+                    else:
+                        mj_data.ctrl = [cl_pwm/100, cr_pwm/100, l_pwm/100, r_pwm/100]
+            
+            if render:
+                for _ in range(50):
+                    mujoco.mj_step(mj_model, mj_data)
+                
+                if viewer.is_alive:
+                    viewer.render()
 
             time.sleep(0.1)
     finally:
@@ -158,5 +199,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--pico1", choices=PICO_IPS.keys(), default="base")
     ap.add_argument("--pico2", choices=PICO_IPS.keys(), default="base")
+    ap.add_argument("--render", action="store_true")
     args = ap.parse_args()
-    run_joystick(PICO_IPS[args.pico1], PICO_IPS[args.pico2])
+    run_joystick(PICO_IPS[args.pico1], PICO_IPS[args.pico2], args.render)
