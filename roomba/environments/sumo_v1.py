@@ -198,11 +198,16 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             self._maximus_pos_history.append(maximus_xy_pos)
             self._commodus_pos_history.append(commodus_xy_pos)
             maximus_xy_pos = np.mean(self._maximus_pos_history, axis=0)
-            commodus_xy_pos = np.mean(self._maximus_pos_history, axis=0)
+            commodus_xy_pos = np.mean(self._commodus_pos_history, axis=0)
 
+            if len(self._maximus_pos_history) < 2 or len(self._commodus_pos_history) < 2:
+                # Use zeros for velocity if not enough history
+                maximus_xy_vel = np.zeros(2, dtype=np.float32)
+                commodus_xy_vel = np.zeros(2, dtype=np.float32)
+            else:
+                maximus_xy_vel = (self._maximus_pos_history[-1] - self._maximus_pos_history[-2]) / self.dt
+                commodus_xy_vel = (self._commodus_pos_history[-1] - self._commodus_pos_history[-2]) / self.dt
 
-            maximus_xy_vel = (self._maximus_pos_history[-1] - self._maximus_pos_history[-2]) / self.dt
-            commodus_xy_vel = (self._commodus_pos_history[-1] - self._commodus_pos_history[-2]) / self.dt
 
             self._maximus_vel_history.append(maximus_xy_vel)
             self._commodus_vel_history.append(commodus_xy_vel)
@@ -211,7 +216,7 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
             commodus_xy_vel = np.mean(self._commodus_vel_history, axis=0)
 
             # -- maximus to commodus relative --
-            rel_pos = self._maximus_filtered - self._commodus_filtered
+            rel_pos = maximus_xy_pos - commodus_xy_pos
             rel_vel = maximus_xy_vel - commodus_xy_vel
 
             maximus_obs = np.concatenate(
@@ -363,8 +368,6 @@ class Sumo(ParallelEnv, MujocoEnv, utils.EzPickle):
         self.set_state(qpos, qvel)
         self._qvel_tm1 = self.data.qvel.copy()
         self._qvel_tm2 = self._qvel_tm1.copy()
-        self._maximus_filtered = self.data.qpos[0:2].copy()
-        self._commodus_filtered = self.data.qpos[9:11].copy()
         self._maximus_pos_history.clear()
         self._commodus_pos_history.clear()
         self._maximus_vel_history.clear()
